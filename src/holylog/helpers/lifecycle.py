@@ -11,7 +11,7 @@ from __future__ import annotations
 from functools import wraps
 from typing import Any, Callable, TypeVar, cast
 
-from holylog.logging.core import get_logger
+from holylog.logger import get_logger
 
 _ClassT = TypeVar("_ClassT", bound=type[Any])
 

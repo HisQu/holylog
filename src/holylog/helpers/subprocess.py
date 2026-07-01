@@ -11,7 +11,7 @@ from __future__ import annotations
 import subprocess
 from typing import Any
 
-from holylog.logging.core import AppLogger, get_logger
+from holylog.logger import AppLogger, get_logger
 
 
 def forward_cli_output(

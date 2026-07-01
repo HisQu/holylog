@@ -49,13 +49,18 @@ rg "setup_logging" README.md docs
 
 | Path | Responsibility |
 |---|---|
-| `src/holylog/logging` | Runtime logging implementation. |
 | `src/holylog/__init__.py` | Flat public API facade. |
+| `src/holylog/config.py` | Logging setup and handler ownership. |
+| `src/holylog/logger.py` | Logger subclass and semantic emission. |
+| `src/holylog/events.py` | Semantic event metadata. |
+| `src/holylog/context.py` | Correlation IDs and runtime processors. |
+| `src/holylog/rendering` | Console rendering, exception formatting, and redaction. |
+| `src/holylog/helpers` | Lifecycle, telemetry, and subprocess helpers. |
 | `tests` | Public behavior and regression tests. |
 | `docs` | GitHub-rendered docs. |
 
-Keep new runtime behavior in `src/holylog/logging` unless it is only a facade
-export in `src/holylog/__init__.py`.
+Keep user-facing exports in `src/holylog/__init__.py`. Put implementation in
+the domain module or subpackage that owns the behavior.
 
 The preferred public import is:
 

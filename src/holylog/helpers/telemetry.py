@@ -21,7 +21,7 @@ from contextvars import Context, ContextVar, Token, copy_context
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
-from holylog.logging.core import AppLogger, get_logger
+from holylog.logger import AppLogger, get_logger
 
 _TELEMETRY_SCOPES: ContextVar[tuple[object, ...]] = ContextVar(
     "holylog_telemetry_scopes",

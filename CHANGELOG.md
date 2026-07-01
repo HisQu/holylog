@@ -46,7 +46,13 @@ All notable changes to `holylog` will be documented in this file.
 
 ### 💥 Breaking Change Summary
 
-No breaking changes yet.
+- Breaking: Removed the nested `holylog.logging` package and moved internals
+  into clearer modules such as `holylog.config`, `holylog.logger`,
+  `holylog.events`, `holylog.context`, `holylog.rendering`, and
+  `holylog.helpers`.
+  Affected: Users importing `holylog.logging` or `holylog.logging.*` internals.
+  Migration: Use the flat public facade, `import holylog as hlog`; maintainers
+  can use the new internal module paths when needed.
 
 ### ➕ Added
 
@@ -57,6 +63,9 @@ No breaking changes yet.
 
 ### 💔 Changed
 
+- Reorganized Holylog internals into clearer top-level modules and
+  domain-named subpackages while preserving the flat `import holylog as hlog`
+  facade.
 - Structlog support is now modeled as a required runtime dependency through a
   compatibility helper with friendly missing/incompatible dependency errors.
   CID helpers no longer silently skip structlog context binding.
@@ -80,6 +89,8 @@ No breaking changes yet.
 ### ⚠️ Deprecated
 
 ### 🗑️ Removed
+
+- Removed the nested `holylog.logging` implementation package.
 
 ### 🔨 Fixed
 

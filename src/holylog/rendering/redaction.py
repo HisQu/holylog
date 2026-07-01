@@ -23,7 +23,7 @@ from typing import Any, Literal, TextIO, cast
 from rich.console import Console
 from rich.traceback import Trace, Traceback
 
-from holylog.logging.compat import validate_structlog
+from holylog.compat import validate_structlog
 
 
 type ExcInfo = tuple[type[BaseException], BaseException, Any]

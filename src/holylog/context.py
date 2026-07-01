@@ -24,7 +24,7 @@ from time import perf_counter
 from types import TracebackType
 from typing import Any
 
-from holylog.logging.compat import require_structlog_contextvars
+from holylog.compat import require_structlog_contextvars
 
 
 CID: ContextVar[str | None] = ContextVar("holylog_cid", default=None)

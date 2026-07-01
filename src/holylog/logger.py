@@ -22,8 +22,8 @@ from collections.abc import Iterator, Mapping
 from contextvars import ContextVar
 from typing import Any, cast
 
-from holylog.logging.context import CID, current_task_name
-from holylog.logging.levels import SEMANTIC_EVENTS, SemanticEvent
+from holylog.context import CID, current_task_name
+from holylog.events import SEMANTIC_EVENTS, SemanticEvent
 
 
 _DEPTH_BASE_WRAPPER = 3
@@ -216,7 +216,7 @@ class AppLogger(logging.getLoggerClass()):
         :return: Async telemetry context manager.
         """
 
-        from holylog.logging.functions.telemetry import async_telemetry
+        from holylog.helpers.telemetry import async_telemetry
 
         return async_telemetry(
             label=label,

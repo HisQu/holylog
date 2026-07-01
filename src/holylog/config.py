@@ -21,19 +21,19 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
-from holylog.logging.compat import validate_structlog
-from holylog.logging.context import (
+from holylog.compat import validate_structlog
+from holylog.context import (
     add_log_record_fields,
     add_runtime_context,
 )
-from holylog.logging.core import install_app_logger_class
-from holylog.logging.exceptions import (
+from holylog.logger import install_app_logger_class
+from holylog.rendering.redaction import (
     LogFieldRedactor,
     RedactedRichTracebackFormatter,
     json_exception_renderer,
     logging_redact_patterns,
 )
-from holylog.logging.formats import (
+from holylog.rendering.console import (
     AppConsoleRenderer,
     RendererMode,
     add_semantic_defaults,

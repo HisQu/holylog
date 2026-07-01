@@ -241,7 +241,12 @@ Rendered traceback locals are redacted by local-variable name.
 
 | Path | Purpose |
 |---|---|
-| `src/holylog/logging` | Logging implementation modules. |
 | `src/holylog/__init__.py` | Flat public facade. |
+| `src/holylog/config.py` | `setup_logging()` and setup configuration. |
+| `src/holylog/logger.py` | `AppLogger`, `get_logger()`, and logger class installation. |
+| `src/holylog/events.py` | Semantic event registry and event metadata. |
+| `src/holylog/context.py` | Correlation IDs and runtime record processors. |
+| `src/holylog/rendering` | Console rendering, JSON exception rendering, and redaction. |
+| `src/holylog/helpers` | Lifecycle, telemetry, and subprocess helper APIs. |
 | `tests` | Behavior tests for public logging contracts. |
 | `docs` | User and maintainer documentation. |

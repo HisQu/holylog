@@ -71,16 +71,7 @@ Treat this as the parking lot for actionable problems discovered while working b
 
 1. [Todo list](#todo-list)
    1. [Table Of Contents](#table-of-contents)
-2. [2026-07-01](#2026-07-01)
-   1. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
 
 <br>
 
 ---
-
-<br>
-
-# 2026-07-01
-
-## P3 / E3 [Code smell] - remove useless nesting
-- The `holylog.logging` level is currently useless. Find a better architecture.

@@ -147,6 +147,13 @@ User code should import the package facade:
 import holylog as hlog
 ```
 
-The nested `holylog.logging` package currently owns the implementation modules,
-but it is not the preferred user-facing import path. A future architecture pass
-may remove useless nesting while preserving the flat facade where practical.
+Internals are grouped by domain instead of by a generic logging package:
+
+- `config.py` owns setup and handler policy
+- `logger.py` owns semantic logger emission
+- `events.py` owns event metadata
+- `context.py` owns CIDs and runtime processors
+- `rendering/` owns console output, exception rendering, and redaction
+- `helpers/` owns lifecycle, telemetry, and subprocess helpers
+
+The flat facade remains the public import surface.

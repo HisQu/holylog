@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import importlib.util
 import json
 import logging
 import os
@@ -15,8 +16,8 @@ from typing import Any
 import pytest
 import structlog.contextvars as structlog_contextvars
 
-from holylog.logging.exceptions import LogFieldRedactor
-from holylog.logging.context import CID
+from holylog.rendering.redaction import LogFieldRedactor
+from holylog.context import CID
 import holylog as hlog
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -139,6 +140,10 @@ def test_flat_import_exports_public_api() -> None:
     assert not hasattr(hlog, "setup_logger")
 
 
+def test_nested_logging_package_is_removed() -> None:
+    assert importlib.util.find_spec("holylog.logging") is None
+
+
 def test_get_logger_infers_caller_module() -> None:
     log = hlog.get_logger()
 
@@ -206,7 +211,7 @@ def test_cid_helpers_require_structlog_with_friendly_error() -> None:
         builtins.__import__ = blocked_import
 
         import holylog as hlog
-        from holylog.logging.context import CID
+        from holylog.context import CID
 
         try:
             hlog.set_cid("blocked")
