@@ -79,7 +79,9 @@ library, so the default is now conservative.
 When `force=False`, `setup_logging()` owns only handlers created by Holylog. A
 host application, test harness, or dependency may already have handlers on the
 target logger. Holylog leaves those handlers in place and either updates an
-existing Holylog-owned handler or appends one.
+existing Holylog-owned handler or appends one. Updating a Holylog-owned stream
+handler also points it at the active `sys.stderr`, which keeps repeated setup
+calls compatible with CLI and test harnesses that replace capture streams.
 
 When `force=True`, the caller is saying that Holylog owns the selected target
 logger. Holylog clears that logger's handlers and installs one Holylog-owned

@@ -52,9 +52,9 @@ libraries while adding semantic helpers such as `success`, `action_begin`,
 ## Setup Model
 
 `setup_logging()` is safe to call more than once. By default it updates only
-Holylog's own handler and leaves host-owned handlers attached. Use
-`force=True` only when Holylog should take over the target logger and replace
-all of its handlers.
+Holylog's own handler, refreshes that handler's active `stderr` stream, and
+leaves host-owned handlers attached. Use `force=True` only when Holylog should
+take over the target logger and replace all of its handlers.
 
 Use `logger="myapp"` to configure a named application logger instead of the
 process root logger. Named logger setup disables propagation so embedded

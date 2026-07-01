@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import io
 import importlib.util
 import json
 import logging
@@ -313,6 +314,45 @@ def test_setup_logging_updates_holylog_handler_without_duplicates() -> None:
         assert holylog_handlers == [handler]
         assert handler.formatter is not first_formatter
         assert target.level == logging.DEBUG
+    finally:
+        _clear_handlers(target)
+        target.propagate = True
+
+
+def test_setup_logging_refreshes_owned_stream_without_force(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = logging.getLogger("holylog.tests.handler_stream_refresh")
+    _clear_handlers(target)
+    first_stream = io.StringIO()
+    second_stream = io.StringIO()
+    try:
+        monkeypatch.setattr(sys, "stderr", first_stream)
+        hlog.setup_logging(
+            level="INFO",
+            renderer="mini",
+            colorize=False,
+            force=False,
+            logger=target,
+        )
+        handler = _holylog_handlers(target)[0]
+        assert isinstance(handler, logging.StreamHandler)
+        assert handler.stream is first_stream
+
+        first_stream.close()
+        monkeypatch.setattr(sys, "stderr", second_stream)
+        hlog.setup_logging(
+            level="INFO",
+            renderer="mini",
+            colorize=False,
+            force=False,
+            logger=target,
+        )
+
+        assert _holylog_handlers(target) == [handler]
+        assert handler.stream is second_stream
+        target.warning("fresh stream")
+        assert "fresh stream" in second_stream.getvalue()
     finally:
         _clear_handlers(target)
         target.propagate = True

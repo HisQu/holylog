@@ -95,7 +95,8 @@ callers usually pass arguments to `setup_logging()` rather than constructing
 
 `setup_logging(force=False)` preserves host-owned handlers and updates only
 Holylog-owned handlers. If a Holylog-owned handler already exists, its
-formatter is replaced with the newly requested renderer and options.
+formatter is replaced with the newly requested renderer and options, and its
+stream is refreshed to the active `sys.stderr`.
 
 `setup_logging(force=True)` clears all handlers from the target logger and
 installs exactly one Holylog-owned stream handler.

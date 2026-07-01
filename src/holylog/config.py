@@ -15,6 +15,7 @@ consumption.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import sys
 from collections.abc import Sequence
@@ -172,7 +173,7 @@ def _configure_stdlib(config: LoggingConfig, structlog_module: Any) -> None:
         return
 
     primary = holylog_handlers[0]
-    primary.setFormatter(formatter)
+    _update_holylog_handler(primary, formatter)
     _remove_and_close_handlers(target, holylog_handlers[1:])
 
 
@@ -197,6 +198,45 @@ def _is_holylog_handler(handler: logging.Handler) -> bool:
     """
 
     return getattr(handler, _HOLYLOG_HANDLER_ATTR, False) is True
+
+
+def _update_holylog_handler(
+    handler: logging.Handler,
+    formatter: logging.Formatter,
+) -> None:
+    """Refresh formatter and stream state on a Holylog-owned handler.
+
+    :param handler: Handler previously created by this module.
+    :param formatter: Formatter built from the current setup call.
+    :return: ``None``.
+    """
+
+    handler.setFormatter(formatter)
+    if isinstance(handler, logging.StreamHandler):
+        _attach_current_stderr(handler)
+
+
+def _attach_current_stderr(handler: logging.StreamHandler[Any]) -> None:
+    """Point a Holylog-owned stream handler at the active stderr object.
+
+    Pytest and CLI test runners replace and close ``sys.stderr`` capture
+    streams between calls. Holylog owns this handler, so refreshing the stream
+    here keeps repeated ``setup_logging(force=False)`` calls usable without
+    touching host-owned handlers.
+
+    :param handler: Holylog-owned stream handler.
+    :return: ``None``.
+    """
+
+    if handler.stream is sys.stderr:
+        return
+    handler.acquire()
+    try:
+        with contextlib.suppress(ValueError):
+            handler.flush()
+        handler.stream = sys.stderr
+    finally:
+        handler.release()
 
 
 def _remove_and_close_handlers(

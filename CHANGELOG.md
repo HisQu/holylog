@@ -95,8 +95,8 @@ All notable changes to `holylog` will be documented in this file.
   ownership, semantic helpers, correlation IDs, JSON output, redaction,
   lifecycle logging, telemetry, subprocess forwarding, and maintainer workflow.
 - `setup_logging(force=False)` now preserves host-owned target handlers while
-  updating Holylog-owned handlers in place. Use `force=True` for full target
-  logger takeover.
+  updating Holylog-owned handlers in place and refreshing the active stderr
+  stream. Use `force=True` for full target logger takeover.
 - Dependency logger handlers are now preserved by default when applying
   `dependency_levels`; use `dependency_handler_policy="clear"` for the previous
   clear-and-propagate behavior.

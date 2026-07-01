@@ -59,8 +59,8 @@ hlog.setup_logging(level="INFO", renderer="json", force=True)
 ```
 
 When `force=False`, Holylog preserves host-owned handlers and updates only the
-handler it created. Repeated setup calls change Holylog formatting without
-adding duplicate Holylog handlers.
+handler it created. Repeated setup calls change Holylog formatting, refresh the
+owned handler's active `stderr` stream, and avoid duplicate Holylog handlers.
 
 Configure dependency logger levels without touching dependency handlers:
 
