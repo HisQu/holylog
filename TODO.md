@@ -1,26 +1,65 @@
-# Todo List
+# Todo list
 
-Treat this as the parking lot for actionable problems discovered while working
-but intentionally left unresolved.
+Treat this as the parking lot for actionable problems discovered while working but intentionally left unresolved.
+
+
+<br>
 
 > [!CAUTION]
-> This is git-tracked: never record secrets, absolute paths, credentials,
-> private host data, or speculative security claims. Use only relative paths.
+> This is git-tracked: Never record secrets, absolute paths, credentials, private host data, or speculative security claims. Use only relative paths.
+
 
 > [!IMPORTANT]
 >
 > ## Rules
+> 1) Do not remove this header under any circumstances. Change only below the first `---`.
+> 1) Newest at the top.
+> 1) Append a new entry only when the observation is real, actionable, not already listed, and out of scope for the current change. Do not modify `TODO.md` when there is nothing useful to add.
+> 1) If an issue is new and related to another issue, reference it in the `Suggested next step`. Do not create a new entry for the same problem. Place the reference in both entries (bi-directional).
+> 1) If an issue was resolved, remove it and make an entry in the CHANGELOG.md.
+> 1) **Types:**
+>       - **Bug risk**: Potential defect with concrete evidence, not yet confirmed.
+>       - **Code smell**: Implementation, architectural, maintainability or clarity issue that is not currently a defect.
+>       - **Docs drift**: Documentation is stale, incomplete, or inconsistent.
+>       - **Tooling**: Issue with build, test, lint, type-check, and general slowdown of developer workflow.
+>       - **Security**: Evidence-backed security risk. Use Question for uncertainty.
+>       - **Question**: Design, behavior, or ownership uncertainty needing investigation.
 >
-> 1. Newest entries go at the top.
-> 2. Add an entry only when the observation is real, actionable, not already
->    listed, and out of scope for the current change.
-> 3. Remove resolved issues and mention the resolution in `CHANGELOG.md`.
-> 4. Use the type labels `Bug risk`, `Code smell`, `Docs drift`, `Tooling`,
->    `Security`, or `Question`.
-> 5. Use priorities `P1` for soon, `P2` for before the next milestone, and
->    `P3` for later cleanup.
-> 6. Use effort labels `E1` for a focused pass, `E2` for a small batch, and
->    `E3` for a large batch.
+> 1) **Priorities:**
+>       - **P1**: Should be handled ASAP.
+>       - **P2**: Should be handled before next release or milestone.
+>       - **P3**: Useful cleanup for a later focused pass.
+> 1) **Effort:**
+>       - **E1**: Issue deserves its own focused pass.
+>       - **E2**: Can be batched with a few other issues.
+>       - **E3**: Can be batched with many other issues.
+> 1) **Format:**
+> ```markdown
+>
+> <br>
+>
+> # YYYY-MM-DD
+>
+> ## <Priority> / <Effort> [<Type>] - *Short problem title*
+> - **Area:** `path/or/symbol`
+> - **Observed while:** short context
+> - **Evidence:** concrete observation
+> - **Why not fixed now:** scope, risk, uncertainty, or user decision needed
+> - **Suggested next step:** smallest reasonable follow-up. If applicable, reference related todos [here](#todo-list).
+>
+> ## <Priority> / <Effort> [<Type>] - *Short problem title*
+> - **Area:** `path/or/symbol`
+> - ...
+>
+> <br>
+>
+> # YYYY-MM-DD
+>
+> ## <Priority> / <Effort> [<Type>] - *Short problem title*
+> - **Area:** `path/or/symbol`
+> - ...
+> ```
+
 
 <br>
 
@@ -30,15 +69,15 @@ but intentionally left unresolved.
 
 ## Table Of Contents
 
-1. [Todo List](#todo-list)
+1. [Todo list](#todo-list)
    1. [Table Of Contents](#table-of-contents)
-2. [[0.1.0] 2026-07-01](#010-2026-07-01)
-   1. [P1 / E1 [Code smell] - `setup_logging()` handler ownership is too blunt](#p1--e1-code-smell---setup_logging-handler-ownership-is-too-blunt)
-   2. [P1 / E2 [Code smell] - CID lifecycle cannot restore an outer value](#p1--e2-code-smell---cid-lifecycle-cannot-restore-an-outer-value)
-   3. [P2 / E1 [Code smell] - Async telemetry patches the event loop method](#p2--e1-code-smell---async-telemetry-patches-the-event-loop-method)
-   4. [P2 / E2 [Code smell] - Redaction policy is shallow for structured fields](#p2--e2-code-smell---redaction-policy-is-shallow-for-structured-fields)
-   5. [P2 / E3 [Code smell] - Semantic event methods can drift from the registry](#p2--e3-code-smell---semantic-event-methods-can-drift-from-the-registry)
-   6. [P3 / E1 [Code smell] - Structlog compatibility layer still reads as optional](#p3--e1-code-smell---structlog-compatibility-layer-still-reads-as-optional)
+2. [2026-07-01](#2026-07-01)
+   1. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
+   2. [P1 / E2 \[Code smell\] - *CID lifecycle cannot restore an outer value*](#p1--e2-code-smell---cid-lifecycle-cannot-restore-an-outer-value)
+   3. [P2 / E1 \[Code smell\] - *Async telemetry patches the event loop method*](#p2--e1-code-smell---async-telemetry-patches-the-event-loop-method)
+   4. [P2 / E2 \[Code smell\] - *Redaction policy is shallow for structured fields*](#p2--e2-code-smell---redaction-policy-is-shallow-for-structured-fields)
+   5. [P2 / E3 \[Code smell\] - *Semantic event methods can drift from the registry*](#p2--e3-code-smell---semantic-event-methods-can-drift-from-the-registry)
+   6. [P3 / E1 \[Code smell\] - *Structlog compatibility layer still reads as optional*](#p3--e1-code-smell---structlog-compatibility-layer-still-reads-as-optional)
 
 <br>
 
@@ -46,24 +85,10 @@ but intentionally left unresolved.
 
 <br>
 
-# [0.1.0] 2026-07-01
+# 2026-07-01
 
-## P1 / E1 [Code smell] - *`setup_logging()` handler ownership is too blunt*
-
-- **Area:** `src/holylog/logging/config.py`
-- **Observed while:** Holylog split code-smell pass.
-- **Evidence:** `_configure_stdlib()` returns early when the target logger has
-  handlers and `force=False`, so later calls update only the level and ignore
-  renderer, color, redaction, exception-local, and stream changes. With
-  `force=True`, Holylog clears every target handler. `_configure_dependency_loggers()`
-  also clears every configured dependency logger handler before enabling
-  propagation.
-- **Why not fixed now:** Better handler ownership needs a small policy design:
-  tag Holylog-owned handlers, update only those handlers in place, and decide
-  how named logger setup should coexist with host-owned handlers.
-- **Suggested next step:** Add a private Holylog handler marker, update existing
-  Holylog handlers instead of all handlers, and add tests for repeated setup
-  calls with different renderers plus host-owned sentinel handlers.
+## P3 / E3 [Code smell] - remove useless nesting
+- The `holylog.logging` level is currently useless. Find a better architecture.
 
 ## P1 / E2 [Code smell] - *CID lifecycle cannot restore an outer value*
 

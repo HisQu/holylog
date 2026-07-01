@@ -5,7 +5,8 @@
 1. [Public API](#public-api)
 2. [Renderers](#renderers)
 3. [Semantic Events](#semantic-events)
-4. [Project Paths](#project-paths)
+4. [Setup Ownership](#setup-ownership)
+5. [Project Paths](#project-paths)
 
 ## Public API
 
@@ -21,6 +22,7 @@ import holylog as hlog
 | `hlog.setup_logging(...)` | Configure stdlib handlers and structlog processors. |
 | `hlog.AppLogger` | Stdlib logger subclass with semantic helpers. |
 | `hlog.LoggingConfig` | Normalized logging setup dataclass. |
+| `hlog.DependencyHandlerPolicy` | Dependency handler policy: `"preserve"` or `"clear"`. |
 | `hlog.AppConsoleRenderer` | Human-readable renderer used by console modes. |
 | `hlog.REDACTED_VALUE` | Placeholder used for redacted structured fields and locals. |
 | `hlog.SEMANTIC_EVENTS` | Mapping of semantic event names to display metadata. |
@@ -50,6 +52,16 @@ Semantic helpers include `trace`, `debug`, `action_begin`, `action_success`,
 
 Structured fields belong in `extra_struct={...}` or stdlib `extra={...}`.
 Holylog rejects fields that collide with reserved `LogRecord` attributes.
+
+## Setup Ownership
+
+`setup_logging(force=False)` preserves host-owned handlers and updates only
+Holylog-owned handlers. `force=True` clears all target logger handlers and
+installs one Holylog handler.
+
+`dependency_levels={...}` sets dependency logger levels. Existing dependency
+handlers and propagation are preserved unless
+`dependency_handler_policy="clear"` is passed.
 
 ## Project Paths
 

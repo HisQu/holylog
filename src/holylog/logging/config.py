@@ -41,9 +41,11 @@ from holylog.logging.formats import (
 
 
 LoggingRenderer = Literal["mini", "cli", "ipy", "json"]
+DependencyHandlerPolicy = Literal["preserve", "clear"]
 
 
 DEFAULT_DEPENDENCY_LEVELS: dict[str, int] = {}
+_HOLYLOG_HANDLER_ATTR = "_holylog_handler"
 
 
 @dataclass
@@ -62,6 +64,7 @@ class LoggingConfig:
     :param exception_show_locals: Whether safe traceback locals should render.
     :param extra_redact_patterns: Additional secret-name patterns to redact.
     :param dependency_levels: Levels applied to noisy upstream loggers.
+    :param dependency_handler_policy: Handler policy for dependency loggers.
     :param force: Whether to replace existing target logger handlers.
     :param logger: Optional named logger to configure instead of the root
         logger.
@@ -76,6 +79,7 @@ class LoggingConfig:
     dependency_levels: dict[str, int] = field(
         default_factory=lambda: dict(DEFAULT_DEPENDENCY_LEVELS)
     )
+    dependency_handler_policy: DependencyHandlerPolicy = "preserve"
     force: bool = False
     logger: str | logging.Logger | None = None
 
@@ -89,16 +93,17 @@ def setup_logging(
     exception_show_locals: bool = True,
     extra_redact_patterns: Sequence[str] = (),
     dependency_levels: dict[str, int] | None = None,
+    dependency_handler_policy: DependencyHandlerPolicy = "preserve",
     force: bool = False,
     logger: str | logging.Logger | None = None,
 ) -> None:
     """Configure stdlib handlers and structlog processors.
 
-    The function is intentionally idempotent by default. If target handlers
-    already exist and ``force`` is false, Holylog only updates the target level
-    and leaves handler ownership alone. With ``force=True``, target handlers
-    are replaced with a ``StreamHandler`` whose formatter runs the full
-    structlog processor chain.
+    The function is intentionally idempotent by default. Holylog marks the
+    handler it creates, updates that handler on later setup calls, and leaves
+    host-owned handlers alone while ``force`` is false. With ``force=True``,
+    target handlers are replaced with one Holylog ``StreamHandler`` whose
+    formatter runs the full structlog processor chain.
 
     When ``logger`` is provided, Holylog configures that named logger instead of
     the root logger and disables propagation so the named application can be
@@ -111,6 +116,8 @@ def setup_logging(
     :param exception_show_locals: Whether safe traceback locals should render.
     :param extra_redact_patterns: Additional secret-name patterns to redact.
     :param dependency_levels: Optional dependency logger level overrides.
+    :param dependency_handler_policy: Whether dependency logger handlers are
+        preserved or cleared while applying dependency levels.
     :param force: Whether to replace existing target logger handlers.
     :param logger: Optional named logger or logger instance to configure
         instead of the root logger.
@@ -130,11 +137,12 @@ def setup_logging(
         exception_show_locals=exception_show_locals,
         extra_redact_patterns=tuple(extra_redact_patterns),
         dependency_levels=effective_dependency_levels,
+        dependency_handler_policy=dependency_handler_policy,
         force=force,
         logger=logger,
     )
     _configure_stdlib(config, structlog_module)
-    _configure_dependency_loggers(config.dependency_levels)
+    _configure_dependency_loggers(config)
 
 
 def _configure_stdlib(config: LoggingConfig, structlog_module: Any) -> None:
@@ -145,20 +153,66 @@ def _configure_stdlib(config: LoggingConfig, structlog_module: Any) -> None:
     :return: ``None``.
     """
 
+    formatter = _processor_formatter(config, structlog_module)
     target = _target_logger(config.logger)
-    if target.handlers and not config.force:
-        target.setLevel(config.level)
-        if config.logger is not None:
-            target.propagate = False
-        return
-
-    target.handlers.clear()
     target.setLevel(config.level)
     if config.logger is not None:
         target.propagate = False
+
+    if config.force:
+        _remove_and_close_handlers(target, target.handlers)
+        target.addHandler(_holylog_stream_handler(formatter))
+        return
+
+    holylog_handlers = [
+        handler for handler in target.handlers if _is_holylog_handler(handler)
+    ]
+    if not holylog_handlers:
+        target.addHandler(_holylog_stream_handler(formatter))
+        return
+
+    primary = holylog_handlers[0]
+    primary.setFormatter(formatter)
+    _remove_and_close_handlers(target, holylog_handlers[1:])
+
+
+def _holylog_stream_handler(formatter: logging.Formatter) -> logging.Handler:
+    """Return a marked handler owned by Holylog.
+
+    :param formatter: Formatter installed on the handler.
+    :return: New stdlib stream handler marked for future updates.
+    """
+
     handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(_processor_formatter(config, structlog_module))
-    target.addHandler(handler)
+    handler.setFormatter(formatter)
+    setattr(handler, _HOLYLOG_HANDLER_ATTR, True)
+    return handler
+
+
+def _is_holylog_handler(handler: logging.Handler) -> bool:
+    """Return whether ``handler`` was created by Holylog.
+
+    :param handler: Handler to inspect.
+    :return: ``True`` for handlers marked by this module.
+    """
+
+    return getattr(handler, _HOLYLOG_HANDLER_ATTR, False) is True
+
+
+def _remove_and_close_handlers(
+    logger: logging.Logger,
+    handlers: Sequence[logging.Handler],
+) -> None:
+    """Remove handlers from their logger lists and close them.
+
+    :param logger: Logger that currently owns the handlers.
+    :param handlers: Handlers scheduled for removal.
+    :return: ``None``.
+    """
+
+    for handler in list(handlers):
+        logger.removeHandler(handler)
+        handler.close()
 
 
 def _target_logger(logger: str | logging.Logger | None) -> logging.Logger:
@@ -251,22 +305,24 @@ def _foreign_pre_chain(structlog_module: Any) -> list[Any]:
     ]
 
 
-def _configure_dependency_loggers(levels: dict[str, int]) -> None:
+def _configure_dependency_loggers(config: LoggingConfig) -> None:
     """Apply level overrides to dependency loggers.
 
-    :param levels: Logger-name to stdlib-level mapping.
+    :param config: Normalized logging configuration.
     :return: ``None``.
     """
 
-    for name, level in levels.items():
+    for name, level in config.dependency_levels.items():
         logger = logging.getLogger(name)
-        logger.handlers.clear()
-        logger.propagate = True
         logger.setLevel(level)
+        if config.dependency_handler_policy == "clear":
+            _remove_and_close_handlers(logger, logger.handlers)
+            logger.propagate = True
 
 
 __all__ = [
     "DEFAULT_DEPENDENCY_LEVELS",
+    "DependencyHandlerPolicy",
     "LoggingConfig",
     "LoggingRenderer",
     "setup_logging",

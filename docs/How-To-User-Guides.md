@@ -39,6 +39,21 @@ owns root logging:
 hlog.setup_logging(level="DEBUG", logger="myapp", force=True)
 ```
 
+When `force=False`, Holylog updates only its own marked handler and preserves
+host-owned handlers. Use `force=True` only when the application intentionally
+takes over the selected target logger.
+
+Configure dependency logger levels without touching dependency handlers:
+
+```python
+import logging
+
+hlog.setup_logging(dependency_levels={"httpx": logging.WARNING})
+```
+
+Pass `dependency_handler_policy="clear"` when a dependency should drop its own
+handlers and propagate into the configured Holylog handler.
+
 ## Use Semantic Helpers
 
 ```python

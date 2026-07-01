@@ -3,6 +3,7 @@
 # ruff: noqa: F401
 
 from holylog.logging.config import (
+    DependencyHandlerPolicy,
     LoggingConfig,
     LoggingRenderer,
     setup_logging,
@@ -30,6 +31,7 @@ from holylog.logging.subprocess import forward_cli_output
 __all__ = [
     "AppConsoleRenderer",
     "AppLogger",
+    "DependencyHandlerPolicy",
     "LoggingConfig",
     "LoggingRenderer",
     "REDACTED_VALUE",

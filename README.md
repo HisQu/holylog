@@ -46,6 +46,16 @@ handlers, `pytest` `caplog`, dependency loggers, and existing logging-aware
 libraries while adding semantic helpers such as `success`, `action_begin`,
 `retry`, `fallback`, `telemetry`, and `traceback`.
 
+`setup_logging()` is safe to call more than once. By default it updates only
+Holylog's own handler and leaves host-owned handlers attached. Use
+`force=True` only when Holylog should take over the target logger and replace
+all of its handlers.
+
+Use `dependency_levels={...}` to adjust noisy dependency logger levels. Existing
+dependency handlers are preserved by default; pass
+`dependency_handler_policy="clear"` to clear dependency handlers and route those
+records through propagation.
+
 Available renderers for `setup_logging(renderer=...)`:
 
 | Renderer | Output |

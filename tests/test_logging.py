@@ -60,10 +60,25 @@ def _exception_local_values(exception: list[dict[str, Any]]) -> str:
     return "\n".join(values)
 
 
+def _holylog_handlers(logger: logging.Logger) -> list[logging.Handler]:
+    return [
+        handler
+        for handler in logger.handlers
+        if getattr(handler, "_holylog_handler", False) is True
+    ]
+
+
+def _clear_handlers(logger: logging.Logger) -> None:
+    for handler in list(logger.handlers):
+        logger.removeHandler(handler)
+        handler.close()
+
+
 def test_flat_import_exports_public_api() -> None:
     assert hlog.get_logger is not None
     assert hlog.setup_logging is not None
     assert hlog.AppLogger is not None
+    assert hlog.DependencyHandlerPolicy is not None
     assert hlog.REDACTED_VALUE == "[redacted]"
     assert hlog.SEMANTIC_EVENTS["SUCCESS"].name == "SUCCESS"
     assert "setup_logger" not in hlog.__all__
@@ -139,9 +154,144 @@ def test_setup_logging_can_configure_named_logger_without_replacing_root() -> (
         assert target.level == logging.DEBUG
         assert target.propagate is False
     finally:
-        target.handlers.clear()
+        _clear_handlers(target)
         target.propagate = True
         root.removeHandler(sentinel)
+
+
+def test_setup_logging_preserves_host_handlers_without_force() -> None:
+    target = logging.getLogger("holylog.tests.handler_preserve")
+    _clear_handlers(target)
+    target.propagate = True
+    sentinel = logging.NullHandler()
+    target.addHandler(sentinel)
+    try:
+        hlog.setup_logging(
+            level="INFO",
+            colorize=False,
+            force=False,
+            logger=target,
+        )
+
+        holylog_handlers = _holylog_handlers(target)
+        assert sentinel in target.handlers
+        assert len(holylog_handlers) == 1
+        assert target.level == logging.INFO
+        assert target.propagate is False
+    finally:
+        _clear_handlers(target)
+        target.propagate = True
+
+
+def test_setup_logging_updates_holylog_handler_without_duplicates() -> None:
+    target = logging.getLogger("holylog.tests.handler_update")
+    _clear_handlers(target)
+    try:
+        hlog.setup_logging(
+            level="INFO",
+            renderer="mini",
+            colorize=False,
+            force=False,
+            logger=target,
+        )
+        handler = _holylog_handlers(target)[0]
+        first_formatter = handler.formatter
+
+        hlog.setup_logging(
+            level="DEBUG",
+            renderer="json",
+            colorize=False,
+            force=False,
+            logger=target,
+        )
+
+        holylog_handlers = _holylog_handlers(target)
+        assert holylog_handlers == [handler]
+        assert handler.formatter is not first_formatter
+        assert target.level == logging.DEBUG
+    finally:
+        _clear_handlers(target)
+        target.propagate = True
+
+
+def test_setup_logging_force_replaces_target_handlers() -> None:
+    target = logging.getLogger("holylog.tests.handler_force")
+    _clear_handlers(target)
+    target.propagate = True
+    sentinel = logging.NullHandler()
+    target.addHandler(sentinel)
+    try:
+        hlog.setup_logging(
+            level="WARNING",
+            colorize=False,
+            force=True,
+            logger=target,
+        )
+
+        holylog_handlers = _holylog_handlers(target)
+        assert sentinel not in target.handlers
+        assert target.handlers == holylog_handlers
+        assert len(holylog_handlers) == 1
+        assert target.level == logging.WARNING
+        assert target.propagate is False
+    finally:
+        _clear_handlers(target)
+        target.propagate = True
+
+
+def test_dependency_logger_policy_preserves_handlers_by_default() -> None:
+    target = logging.getLogger("holylog.tests.dependency_target")
+    dependency = logging.getLogger("holylog.tests.dependency_preserve")
+    _clear_handlers(target)
+    _clear_handlers(dependency)
+    dependency.propagate = False
+    sentinel = logging.NullHandler()
+    dependency.addHandler(sentinel)
+    try:
+        hlog.setup_logging(
+            level="INFO",
+            colorize=False,
+            force=True,
+            logger=target,
+            dependency_levels={dependency.name: logging.ERROR},
+        )
+
+        assert dependency.level == logging.ERROR
+        assert dependency.handlers == [sentinel]
+        assert dependency.propagate is False
+    finally:
+        _clear_handlers(target)
+        _clear_handlers(dependency)
+        target.propagate = True
+        dependency.propagate = True
+
+
+def test_dependency_logger_policy_can_clear_handlers() -> None:
+    target = logging.getLogger("holylog.tests.dependency_clear_target")
+    dependency = logging.getLogger("holylog.tests.dependency_clear")
+    _clear_handlers(target)
+    _clear_handlers(dependency)
+    dependency.propagate = False
+    sentinel = logging.NullHandler()
+    dependency.addHandler(sentinel)
+    try:
+        hlog.setup_logging(
+            level="INFO",
+            colorize=False,
+            force=True,
+            logger=target,
+            dependency_levels={dependency.name: logging.WARNING},
+            dependency_handler_policy="clear",
+        )
+
+        assert dependency.level == logging.WARNING
+        assert dependency.handlers == []
+        assert dependency.propagate is True
+    finally:
+        _clear_handlers(target)
+        _clear_handlers(dependency)
+        target.propagate = True
+        dependency.propagate = True
 
 
 def test_semantic_logger_preserves_structured_fields_and_validation(

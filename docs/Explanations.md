@@ -15,9 +15,11 @@ Semantic methods choose a stdlib level, message decoration, icon, color role,
 and structured metadata. The record still travels through stdlib logging, so
 existing handlers, `pytest` `caplog`, and dependency loggers behave normally.
 
-`setup_logging()` owns the formatting path. It installs Holylog's logger class
-for future loggers, configures a root or named stdlib logger, and attaches a
-structlog `ProcessorFormatter` for console or JSON output.
+`setup_logging()` owns Holylog's formatting path. It installs Holylog's logger
+class for future loggers, configures a root or named stdlib logger, and
+attaches a structlog `ProcessorFormatter` to a marked handler for console or
+JSON output. Repeated setup calls update that marked handler without disturbing
+host-owned handlers unless `force=True` is used.
 
 ## Why Stdlib Logging
 

@@ -1,4 +1,5 @@
 from holylog.logging.config import (
+    DependencyHandlerPolicy as DependencyHandlerPolicy,
     LoggingConfig as LoggingConfig,
     LoggingRenderer as LoggingRenderer,
     setup_logging as setup_logging,

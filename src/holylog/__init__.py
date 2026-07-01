@@ -5,6 +5,7 @@
 from holylog.logging import (
     AppConsoleRenderer,
     AppLogger,
+    DependencyHandlerPolicy,
     LoggingConfig,
     LoggingRenderer,
     REDACTED_VALUE,
@@ -25,6 +26,7 @@ from holylog.logging import (
 __all__ = [
     "AppConsoleRenderer",
     "AppLogger",
+    "DependencyHandlerPolicy",
     "LoggingConfig",
     "LoggingRenderer",
     "REDACTED_VALUE",
