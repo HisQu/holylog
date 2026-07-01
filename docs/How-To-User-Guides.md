@@ -1,223 +1,65 @@
-<!-- ======================================================== -->
+# How-To User Guides
+
 ## Table Of Contents
-<!-- ======================================================== -->
 
-1. [How-To User Guides](#1-how-to-user-guides)
-   1. [Recipe Map](#recipe-map)
-2. [First-Time Setup](#2-first-time-setup)
-   1. [Install The Package](#install-the-package)
-   2. [Run The First Command](#run-the-first-command)
-3. [Common Workflows](#3-common-workflows)
-   1. [Sync Dependencies](#sync-dependencies)
-   2. [Run Tests](#run-tests)
-   3. [Inspect The Project](#inspect-the-project)
-4. [Troubleshooting](#4-troubleshooting)
-   1. [Environment Problems](#environment-problems)
-   2. [Command Problems](#command-problems)
+1. [Install Holylog](#install-holylog)
+2. [Configure Logging](#configure-logging)
+3. [Use Semantic Helpers](#use-semantic-helpers)
+4. [Emit JSON Logs](#emit-json-logs)
 
-<br>
-
-# 1. How-To User Guides
-
-<!-- ======================================================== -->
-## Recipe Map
-<!-- ======================================================== -->
-
-Use this file when you want commands in order. Use
-[References](References.md) when you need exact names and
-[Explanations](Explanations.md) when you need the system model.
-
-> [!NOTE]
-> Related: use [documentation standards](Development.md#4-documentation-standards)
-> when adding new recipes so headings, callouts, and links stay consistent.
-
-<br>
-
-# 2. First-Time Setup
-
-<!-- ======================================================== -->
-## Install The Package
-<!-- ======================================================== -->
-
-Use this recipe from the project root.
-
-1. Create or activate a Python environment.
-2. Install the package for runtime use:
+## Install Holylog
 
 ```bash
-python -m pip install -e "."
+python -m pip install holylog
 ```
 
-3. Install the maintainer tools when you plan to edit the project:
+For editable development:
 
 ```bash
 python -m pip install -e "." --group dev
 ```
 
-4. If you use `uv`, sync the locked maintainer environment:
+## Configure Logging
 
-```bash
-just sync
+Call `setup_logging()` once near the application entrypoint:
+
+```python
+import holylog as hlog
+
+hlog.setup_logging(level="INFO", renderer="cli")
+LOG = hlog.get_logger()
+
+LOG.info("Application started")
 ```
 
-> [!NOTE]
-> Related: use [dependency surfaces](References.md#dependency-surfaces) for the
-> difference between runtime dependencies, optional extras, and dependency
-> groups.
+Use `logger="myapp"` when embedding an application inside a host process that
+owns root logging:
 
-<br>
-
-<!-- ======================================================== -->
-## Run The First Command
-<!-- ======================================================== -->
-
-Show the command tree through the console script:
-
-```bash
-holylog --help
+```python
+hlog.setup_logging(level="DEBUG", logger="myapp", force=True)
 ```
 
-The module entry point should show the same command tree:
+## Use Semantic Helpers
 
-```bash
-python -m holylog --help
+```python
+import holylog as hlog
+
+LOG = hlog.get_logger()
+
+LOG.action_begin("Loading workspace")
+LOG.success("Workspace ready", extra_struct={"workspace": "default"})
 ```
 
-Run the starter commands:
+Pass structured fields through `extra_struct={...}`. Bare custom keyword
+arguments are rejected so calls stay close to stdlib logging.
 
-```bash
-holylog version
-holylog diagnose
-holylog diagnose --json
+## Emit JSON Logs
+
+```python
+hlog.setup_logging(renderer="json", colorize=False)
+LOG = hlog.get_logger()
+LOG.info("batch complete", extra_struct={"rows": 42})
 ```
 
-Initialize AppRC storage before commands that need local runtime state:
-
-```bash
-holylog config setup --yes --storage-root ./local-storage
-export HOLYLOG_STORAGE="$(pwd)/local-storage"
-holylog config doctor
-holylog config show --json
-```
-
-> [!NOTE]
-> Related: use [public interfaces](References.md#public-interfaces) for the
-> commands and import paths users can rely on.
-
-<br>
-
-# 3. Common Workflows
-
-<!-- ======================================================== -->
-## Sync Dependencies
-<!-- ======================================================== -->
-
-Use `just sync` to install the full maintainer environment from `uv.lock`:
-
-```bash
-just sync
-```
-
-Use plain `pip` when you only need the package and do not want `uv`:
-
-```bash
-python -m pip install -e "."
-```
-
-> [!NOTE]
-> Related: use [configuration and dependency model](Explanations.md#configuration-and-dependency-model)
-> for why runtime installs and maintainer installs are documented separately.
-
-<br>
-
-<!-- ======================================================== -->
-## Run Tests
-<!-- ======================================================== -->
-
-Run the focused tests first:
-
-```bash
-python -m pytest tests
-```
-
-Run the quality tools before finishing a code change:
-
-```bash
-ruff format .
-ruff check .
-pyright
-python -m pytest
-```
-
-> [!NOTE]
-> Related: use [Development: verification](Development.md#verification) for
-> the maintainer checklist before a commit.
-
-<br>
-
-<!-- ======================================================== -->
-## Inspect The Project
-<!-- ======================================================== -->
-
-Use these commands when you need to understand the current shape:
-
-```bash
-rg --files
-git status --short
-holylog diagnose
-holylog config doctor
-python -m holylog --help
-```
-
-When a command fails, copy the exact command, current directory, exit code, and
-stderr into the issue or debugging note.
-
-> [!NOTE]
-> Related links:
-> - Use [project paths](References.md#project-paths) for the main source and docs locations.
-> - Use [system model](Explanations.md#system-model) for the package and tooling boundaries.
-
-<br>
-
-# 4. Troubleshooting
-
-<!-- ======================================================== -->
-## Environment Problems
-<!-- ======================================================== -->
-
-Check the active Python and environment first:
-
-```bash
-python --version
-python -c "import sys; print(sys.executable)"
-python -c "import holylog; print(holylog.__file__)"
-```
-
-If the package imports from an unexpected location, reinstall it from the
-project root.
-
-> [!NOTE]
-> Related: use [failure model](Explanations.md#failure-model) for the normal
-> order of checks when a command behaves differently across machines.
-
-<br>
-
-<!-- ======================================================== -->
-## Command Problems
-<!-- ======================================================== -->
-
-When a `just` recipe fails:
-
-1. Run `just --list`.
-2. Run the underlying command manually.
-3. Check whether the virtual environment is active.
-4. Check whether the command exists in `.venv/bin`.
-
-```bash
-just --list
-ls .venv/bin
-```
-
-> [!NOTE]
-> Related: use [command reference](References.md#command-reference) for the
-> expected commands and their owners.
+JSON output includes standard record metadata, semantic event fields, context
+values such as `cid`, and redacted exception locals.

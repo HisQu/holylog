@@ -1,53 +1,44 @@
 # Repository conventions
 
 ## Repo routing
-- Warn me if the paths below appear outdated.
+
 - Reuse existing helpers and utilities before adding new helper functions.
-- Check these modules first:
-  - `holylog.config`
-  - `holylog.utils`
-  - `apprc.runtime_config`
-  - `apprc.logging`
-- If a helper is broadly reusable, place it in the appropriate shared module.
-- Put long-form docs in `docs/`:
-  - procedures in `docs/How-To-User-Guides.md`
-  - maintainer workflow in `docs/Development.md`
-  - exact paths, commands, and public names in `docs/References.md`
-  - concepts and architecture in `docs/Explanations.md`
-- Put CLI behavior in `holylog.cli.app`; keep `holylog.main` as a
-  thin public entry point wrapper.
-- Check the TODO.md and assess if your task is related to any issues and should be resolved as part of your pass.
+- Runtime logging behavior belongs in `src/holylog/logging`.
+- The flat public facade belongs in `src/holylog/__init__.py`.
+- Tests belong in `tests`.
+- Long-form docs belong in `docs`.
+- Check `TODO.md` before starting and remove resolved items when a pass handles
+  them.
 
 ## Project rules
-- Do not duplicate helpers or re-implement existing utilities without checking first.
-- App configuration belongs in `holylog.config.owners` and should use AppRC `EnvConfig` classes with `env_field(...)` declarations.
-- CLI behavior belongs in `holylog.cli.app`; keep `holylog.main` as a thin public entry point wrapper.
-- Import logging helpers from `apprc.logging`, for example `from apprc.logging import get_logger`.
-- Import `holylog`-owned utility helpers through the facade: `import holylog.utils as ut`.
-- Use explicit `ut.` prefixes for local utilities.
-- For facade `__init__.py` files, prefer clean batch re-export imports plus file-level `# ruff: noqa: F401`; do not use redundant `symbol as symbol` aliases solely to satisfy Ruff.
-- Update `README.md` or `docs/` if a change affects usage, setup, CLI behavior, public APIs, environment variables, or user-visible workflows.
-- Add minimal `__main__` demo code only when it improves discoverability or manual testing.
-- If a test needs a lighter setup, add or reuse a dedicated test helper instead of widening production code to `Any`.
-- If a boundary is truly dynamic, model that boundary explicitly; do not probe strict domain objects defensively.
+
+- Do not duplicate helpers or re-implement existing utilities without checking
+  first.
+- Keep `import holylog as hlog` as the primary user-facing API.
+- Do not add `setup_logger`; the public setup function is `setup_logging`.
+- For facade `__init__.py` files, prefer clean batch re-export imports plus
+  file-level `# ruff: noqa: F401`.
+- Update `README.md`, `docs`, and `CHANGELOG.md` when a change affects setup,
+  public APIs, renderers, or user-visible output.
+- Add minimal `__main__` demo code only when it improves discoverability or
+  manual testing.
 
 ## Documentation rules
+
 - Start major docs files with a compact table of contents.
-- Use repeated `#` headings for major document parts.
-- Use separator comments before major sections.
+- Use direct links and exact public names.
 - Use GitHub callouts consistently.
-- Use `[!NOTE]` callouts for related links and return links.
-- Start one-line related-link callouts with `Related:`.
-- Start multi-link related-link callouts with `Related links:`.
-- Do not use standalone backlink labels in prose.
-- Update the CHANGELOG.md after each pass
-- Update the TODO.md 
+- Do not put custom titles on the same line as a GitHub callout marker.
 
 ## Verification
-- Review the diff for duplicate helpers, naming drift, unnecessary abstractions, and regressions.
-- Run the project’s relevant lint, type-check, and test commands before considering the task done.
+
+- Review the diff for duplicate helpers, naming drift, unnecessary
+  abstractions, and regressions.
+- Run the project’s relevant lint, type-check, and test commands before
+  considering the task done.
 
 ## User Decisions
+
 - Never answer questions on the user's behalf.
-- Do not treat recommended options, defaults, timeouts, or auto-resolution as user approval or user preference.
+- Do not treat defaults, timeouts, or auto-resolution as user approval.
 - If a user decision is required, ask and wait for the user’s explicit answer.

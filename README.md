@@ -1,262 +1,76 @@
+# Holylog
 
+Stdlib-compatible semantic logging for Python applications.
 
-<!-- This is a comment -->
+## Table Of Contents
 
-<!-- ============================================================== -->
-<!-- == Header ==================================================== -->
-<div align="center">
+1. [Installation](#installation)
+2. [Usage](#usage)
+3. [Development](#development)
+4. [Documentation](#documentation)
 
-<!-- --- Title ---------------------------------------------------- -->
-# `holylog`: A Template
-
-
-<!-- --- Logo ----------------------------------------------------- -->
-*Part of:*
-
-<a href="https://hisqu.de" target="_blank">
-  <img 
-  src="https://avatars.githubusercontent.com/u/196629600?s=200&v=4" 
-  width="100px" alt="logo"
-  style="margin-top: -10px;"> 
-</a>
-
-<br>
-
-<!-- --- Badges --------------------------------------------------- -->
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
-
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Pyright](https://img.shields.io/badge/type%20checked-pyright-blue)](https://microsoft.github.io/pyright/)
-[![pytest](https://img.shields.io/badge/tested%20with-pytest-0A9EDC)](https://docs.pytest.org/)
-<!-- [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/HisQu/haiu/blob/main/LICENSE) -->
-
-
-
-
-</div>
-
-<!-- --- URLs --------------------------------------------------- -->
-[`direnv`]: https://direnv.net/
-[`just`]: https://github.com/casey/just?tab=readme-ov-file#packages
-[`uv`]: https://github.com/astral-sh/uv?tab=readme-ov-file#uv
-
-
-<!-- ============================================================== -->
-<!-- ============================================================== -->
-
-<div style="width: 85%; margin: 2rem auto; text-align: justify;">
-<hr>
-
-###  `holylog` ...
-<!-- Summarize the top 3 features -->
-- ... integrates cool things like lorem ipsum dolor
-- ... standardizes Dolor sit amet dolor blah bla
-- ... Ipsum dolor sit amet 
-
-
-#### Main dependencies:
-<!-- List your main dependencies here and explain why they're important. -->
-- **`apprc`**: Runtime config, generated `config` CLI, Textual editor, and logging.
-
-<hr>
-</div>
-
-
-<!-- Graphical Abstract goes here: -->
-
-<!-- | ![Graphical abstract](./assets/figures/graphical-abstract_init-proj-graphviz.svg) |
-|:--:|
-| **Fig. 1 - Graphical Abstract:** Buildben creates scaffolds for Python projects adhering to Python PEP standards. |
-
-<br> -->
-
-<!-- HTML-version of Graphical Abstract -->
-<!-- 
-<div align="center">
-  <img src="https://github.com/HisQu/buildben/raw/main/assets/figures/diagram-graphviz.svg"
-       width="800px" alt="Management of Virtual Environments & Dependencies" >
-  <p><em> 
-  <b> Graphical Abstract: </b> 
-  Management of Virtual Environments & Dependencies. Red dashed lines are Dependencies.
-  </em></p>
-</div> 
-
-
-
-
--->
-
-
-
-
-<!-- ============================================================== -->
-<!-- ============================================================== -->
-### Table of Contents
-
-<!-- toc -->
-
-1. [`holylog`: A Template](#my_project-a-template)
-   1. [📦 Installation](#-installation)
-   2. [🚀 Usage](#-usage)
-   3. [💻  Development](#--development)
-   4. [📚  Examples / Documentation](#--examples--documentation)
-
-<!-- tocstop -->
-<!-- /toc -->
-
-<br>
-
-<!-- ============================================================== -->
-<!-- ============================================================== -->
-## 📦 Installation
-
-### Prerequisites:
-- Python >=3.12,<3.13
-- `git`
-- [`uv`] (optional)
-
-
-### Install with `pip`:
-#### 1. Install system dependencies:
-``` bash
-apt update
-apt install python3.12
-```
-<!-- git clone https://github.com/markur4/holylog.git -->
-#### 2. Clone & Install `holylog`:
-``` bash
-git clone https://github.com/HisQu/holylog.git
-cd holylog
-python -m pip install -e "."              # Core runtime dependencies
-python -m pip install -e ".[rag]"         # Core + published RAG extra
-python -m pip install -e "." --group dev  # Core + local dev tools
-python -m pip install -e ".[rag]" --group dev
-```
-The `rag` commands apply after the commented `rag` extra in `pyproject.toml` is
-uncommented and populated.
-
-#### ✅ Verify installation: 
-```bash
-python -m holylog --help
-holylog version
-holylog config setup --yes --storage-root ./local-storage
-export HOLYLOG_STORAGE="$(pwd)/local-storage"
-holylog config doctor
-```
-
-
-<br>
-
-<!-- ============================================================== -->
-<!-- ============================================================== -->
-## 🚀 Usage
-
-<!-- Present a minimal example of the most important feature! -->
-
-### Show the command tree:
-```bash
-holylog --help
-holylog diagnose
-holylog diagnose --json
-```
-
-### Initialize local configuration:
-```bash
-holylog config setup --yes --storage-root /absolute/path/to/storage
-export HOLYLOG_STORAGE="/absolute/path/to/storage"
-holylog config doctor
-holylog config show --json
-```
- 
-### Edit local configuration:
-```bash
-holylog config set app.message "Hello local storage"
-holylog config edit
-```
-
-
-
-<br>
-
-<!-- ============================================================== -->
-<!-- ============================================================== -->
-## 💻  Development 
-
-### Dev-Hints:
-- **Issues:** Open an issue on GitHub!
-- **Contribute:** Feel free to fork this repo and submit a PR!
-
-
-
-<!-- --- Testing ------------------------------------------------- -->
-
-<details><summary> <h3> <i> Testing </i> </h3> </summary>
-
-*!! Pytest not yet Implemented!*
-```bash
-python -m pip install -e "." --group dev  # Install testing tools from [dependency-groups]
-pytest                                    # Run tests
-```
-</details>
-
-
-<!-- --- Diagrams ------------------------------------------------- -->
-
-<details><summary> <h3> <i> Class Diagram </i> </h3> </summary>
-<blockquote>
-
-<!-- Make a mermaid class diagram / flowchart! -->
-
-<!-- <img src="https://raw.githubusercontent.com/markur4/plotastic/main/class_diagram.svg" alt="logo"> -->
-
-</blockquote></details>
-
-
-
-<br>
-
-<!-- ============================================================== -->
-<!-- ============================================================== -->
-## 📚  Examples / Documentation 
-
-Longer project docs live in [`docs/README.md`](docs/README.md). Start there
-when you need task recipes, maintainer workflow, exact references, or system
-explanations.
-
-- **[`docs/How-To-User-Guides.md`](docs/How-To-User-Guides.md)**: commands in order.
-- **[`docs/Development.md`](docs/Development.md)**: maintainer workflow and verification.
-- **[`docs/References.md`](docs/References.md)**: exact paths, commands, and public names.
-- **[`docs/Explanations.md`](docs/Explanations.md)**: architecture and design context.
-
-<!-- This is a presentation / documentation of **specific** options. 
-If available, link to files (e.g. .ipynb) in the examples folder! -->
-
-<details><summary> <h3> <i> Example 1 </i> </h3> </summary>
-<blockquote>
+## Installation
 
 ```bash
-# Create a local storage root and inspect the resolved config
-holylog config setup --yes --storage-root ./local-storage
-export HOLYLOG_STORAGE="$(pwd)/local-storage"
-holylog config show --json
+python -m pip install holylog
 ```
 
-</blockquote></details>
-
-
-<!-- --- Separator ------------------------------------------------ -->
-
-<details><summary> <h3> <i> Example 1 </i> </h3> </summary>
-<blockquote>
-
+For local development:
 
 ```bash
-# Print local package and Python diagnostics
-holylog diagnose
+python -m pip install -e "." --group dev
 ```
 
-</blockquote></details>
+## Usage
 
+Use the flat package API:
 
-<br>
+```python
+import holylog as hlog
+
+hlog.setup_logging(level="INFO", renderer="cli")
+LOG = hlog.get_logger()
+
+LOG.success("configured", extra_struct={"profile": "default"})
+```
+
+`hlog.get_logger()` infers the caller module. Pass a name when explicit logger
+ownership is clearer:
+
+```python
+LOG = hlog.get_logger(__name__)
+```
+
+Holylog loggers are real `logging.Logger` subclasses. They work with stdlib
+handlers, `pytest` `caplog`, dependency loggers, and existing logging-aware
+libraries while adding semantic helpers such as `success`, `action_begin`,
+`retry`, `fallback`, `telemetry`, and `traceback`.
+
+Available renderers for `setup_logging(renderer=...)`:
+
+| Renderer | Output |
+|---|---|
+| `mini` | Compact human console output. |
+| `cli` | CLI-oriented human console output. |
+| `ipy` | Notebook-oriented human console output. |
+| `json` | Machine-readable JSON records. |
+
+## Development
+
+```bash
+python -m pip install -e "." --group dev
+.venv/bin/ruff format .
+.venv/bin/ruff check .
+.venv/bin/pyright
+.venv/bin/pytest
+```
+
+`uv`, `direnv`, and `just` may be used as local conveniences when available,
+but the repository must remain installable with normal `pip`.
+
+## Documentation
+
+- [How-To User Guides](docs/How-To-User-Guides.md)
+- [References](docs/References.md)
+- [Explanations](docs/Explanations.md)
+- [Development](docs/Development.md)
