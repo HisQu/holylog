@@ -14,10 +14,49 @@ from typing import Any
 import pytest
 import structlog.contextvars as structlog_contextvars
 
+from holylog.logging.exceptions import LogFieldRedactor
 from holylog.logging.context import CID
 import holylog as hlog
 
 ROOT = Path(__file__).resolve().parents[1]
+
+SEMANTIC_HELPER_EVENTS = {
+    "trace": "TRACE",
+    "debug": "DEBUG",
+    "action_begin": "ACTION_BEGIN",
+    "action_success": "ACTION_SUCCESS",
+    "info_begin": "INFO_BEGIN",
+    "info": "INFO",
+    "wait": "WAIT",
+    "save": "SAVE",
+    "telemetry": "TELEMETRY",
+    "success": "SUCCESS",
+    "warning": "WARNING",
+    "retry": "RETRY",
+    "fallback": "FALLBACK",
+    "error": "ERROR",
+    "traceback": "TRACEBACK",
+    "critical": "CRITICAL",
+}
+
+SEMANTIC_HELPER_MESSAGES = {
+    "trace": ("trace message", "trace message"),
+    "debug": ("debug message", "debug message"),
+    "action_begin": ("start", "start ..."),
+    "action_success": ("done", "done"),
+    "info_begin": ("begin", "begin"),
+    "info": ("info message", "info message"),
+    "wait": ("waiting", "waiting ..."),
+    "save": ("saved", "saved"),
+    "telemetry": ("metrics", "metrics"),
+    "success": ("success", "success"),
+    "warning": ("warning", "warning"),
+    "retry": ("retry", "retry ..."),
+    "fallback": ("fallback", "fallback ..."),
+    "error": ("error", "error"),
+    "traceback": ("traceback", "traceback:"),
+    "critical": ("critical", "critical"),
+}
 
 
 def _json_log_lines(output: str) -> list[dict[str, Any]]:
@@ -323,45 +362,32 @@ def test_semantic_logger_preserves_structured_fields_and_validation(
             log.info("bad", extra={"rows": 1}, extra_struct={"rows": 2})
 
 
-@pytest.mark.parametrize(
-    ("method_name", "message", "level", "icon", "expected"),
-    [
-        ("trace", "trace message", logging.DEBUG, "🐛", "trace message"),
-        ("debug", "debug message", logging.DEBUG, "🐞", "debug message"),
-        ("action_begin", "start", logging.INFO, "⚛️", "start ..."),
-        ("action_success", "done", logging.INFO, "☑️", "done"),
-        ("info_begin", "begin", logging.INFO, "▶️ ", "begin"),
-        ("info", "info message", logging.INFO, "📃", "info message"),
-        ("wait", "waiting", logging.INFO, "💤", "waiting ..."),
-        ("save", "saved", logging.INFO, "💾", "saved"),
-        ("telemetry", "metrics", logging.INFO, "👀", "metrics"),
-        ("success", "success", logging.INFO, "✅", "success"),
-        ("warning", "warning", logging.WARNING, "⚠️", "warning"),
-        ("retry", "retry", logging.WARNING, "🔄", "retry ..."),
-        ("fallback", "fallback", logging.WARNING, "🚑", "fallback ..."),
-        ("error", "error", logging.ERROR, "❌", "error"),
-        ("critical", "critical", logging.CRITICAL, "💀", "critical"),
-    ],
-)
+@pytest.mark.parametrize("method_name", sorted(SEMANTIC_HELPER_EVENTS))
 def test_semantic_helpers_preserve_metadata(
     caplog: pytest.LogCaptureFixture,
     method_name: str,
-    message: str,
-    level: int,
-    icon: str,
-    expected: str,
 ) -> None:
     hlog.setup_logging(level="DEBUG", colorize=False, force=False)
     log = hlog.get_logger("holylog.tests.helpers")
+    event_name = SEMANTIC_HELPER_EVENTS[method_name]
+    event = hlog.SEMANTIC_EVENTS[event_name]
+    message, expected = SEMANTIC_HELPER_MESSAGES[method_name]
 
     with caplog.at_level(logging.DEBUG, logger="holylog.tests.helpers"):
         getattr(log, method_name)(message)
 
     record = caplog.records[-1]
-    assert record.levelno == level
+    assert record.levelno == event.level
     assert record.getMessage() == expected
-    assert record.icon == icon
-    assert record.event_type
+    assert record.icon == event.icon
+    assert record.event_type == event.name
+
+
+def test_semantic_helper_registry_cannot_drift() -> None:
+    assert set(SEMANTIC_HELPER_EVENTS.values()) == set(hlog.SEMANTIC_EVENTS)
+    for method_name in SEMANTIC_HELPER_EVENTS:
+        assert callable(getattr(hlog.AppLogger, method_name))
+    assert hlog.AppLogger.warn is hlog.AppLogger.warning
 
 
 def test_semantic_events_include_usage_documentation() -> None:
@@ -510,6 +536,63 @@ def test_json_logging_includes_extras_and_structured_exceptions(
     assert harmless in local_values
     assert "api_key" not in local_names
     assert benchmark_secret not in local_values
+
+
+def test_json_logging_redacts_nested_structured_fields(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    hlog.setup_logging(
+        level="INFO",
+        renderer="json",
+        colorize=False,
+        force=True,
+        extra_redact_patterns=("credential",),
+    )
+    log = hlog.get_logger("holylog.tests.nested_redaction")
+    secret = "-".join(("nested", "private", "value"))
+    token = object()
+    structured = {
+        "profile": {
+            "token": secret,
+            "visible": "safe",
+        },
+        "items": [
+            {"api_key": secret},
+            ("safe", {"credential": token}),
+        ],
+    }
+
+    log.info("nested redaction", extra_struct=structured)
+
+    payload = _json_log_lines(capsys.readouterr().err)[-1]
+    assert payload["profile"] == {
+        "token": hlog.REDACTED_VALUE,
+        "visible": "safe",
+    }
+    assert payload["items"][0]["api_key"] == hlog.REDACTED_VALUE
+    assert payload["items"][1][1]["credential"] == hlog.REDACTED_VALUE
+    assert structured["profile"]["token"] == secret
+    assert structured["items"][0]["api_key"] == secret
+    assert structured["items"][1][1]["credential"] is token
+
+
+def test_redactor_bounds_cycles_and_depth() -> None:
+    cyclic: dict[str, Any] = {}
+    cyclic["self"] = cyclic
+    event = {
+        "cyclic": cyclic,
+        "bounded": {"level1": {"level2": {"secret": "too deep"}}},
+    }
+
+    redacted = LogFieldRedactor(("secret",), max_depth=2)(
+        None,
+        "info",
+        event,
+    )
+
+    assert redacted["cyclic"] == {"self": "[circular]"}
+    assert cyclic["self"] is cyclic
+    assert redacted["bounded"]["level1"]["level2"]["secret"] == "too deep"
 
 
 @pytest.mark.asyncio

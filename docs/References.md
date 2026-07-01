@@ -228,8 +228,11 @@ Holylog redacts fields whose names match built-in secret-name patterns, such as
 `extra_redact_patterns=(...)` to `setup_logging()` to add project-specific
 field-name patterns.
 
-Top-level event fields and rendered traceback locals are redacted. Nested
-structured values are not recursively traversed yet.
+Structured event fields are traversed recursively through dictionaries, lists,
+and tuples with a bounded depth and cycle protection. Redaction is based on
+field names. Holylog does not scan arbitrary values for secret-looking text.
+
+Rendered traceback locals are redacted by local-variable name.
 
 ## Project Paths
 

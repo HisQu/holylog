@@ -116,14 +116,15 @@ Holylog redacts by field name. Secret-looking names are replaced with
 `REDACTED_VALUE` before rendering. The same matcher is used for normal event
 fields and traceback locals.
 
-The current structured-field redaction is shallow. Top-level event fields are
-redacted, and traceback local mappings are walked, but nested dictionaries and
-lists inside `extra_struct` are not yet recursively traversed.
+Structured event fields are traversed recursively through dictionaries, lists,
+and tuples with a bounded depth and cycle protection. Nested containers are
+copied only when a value changes, so ordinary scalar-heavy log records avoid
+extra allocation.
 
 > [!WARNING]
-> Recursive structured redaction is tracked in
-> [TODO](../TODO.md#p2--e2-code-smell---redaction-policy-is-shallow-for-structured-fields).
-> Avoid placing secrets inside nested structured values until that pass lands.
+> Redaction does not inspect arbitrary values. Put secrets under clearly named
+> fields such as `token`, `api_key`, `password`, `secret`, or a project-specific
+> pattern passed with `extra_redact_patterns`.
 
 ## Async Telemetry Caveat
 

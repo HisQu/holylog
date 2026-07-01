@@ -201,10 +201,13 @@ LOG.info(
 
 The redacted value is `hlog.REDACTED_VALUE`, currently `[redacted]`.
 
-> [!WARNING]
-> Current structured-field redaction is shallow. Top-level event fields and
-> traceback locals are redacted, but nested dictionaries and lists inside
-> `extra_struct` are tracked as a TODO for a later pass.
+Structured-field redaction is recursive for dictionaries, lists, and tuples up
+to a bounded depth. Matching keys are replaced before JSON serialization, so
+secret values may be strings, numbers, objects, or other non-serializable
+values.
+
+Redaction is based on field names, not value scanning. A value under a safe key
+is left alone even when the value text looks secret.
 
 Set `exception_show_locals=False` when exception locals should never be
 rendered:

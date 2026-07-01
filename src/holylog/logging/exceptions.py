@@ -2,7 +2,7 @@
 
 Tracebacks can expose API keys, database URLs, and prompt contents through
 local variables or structured fields. This module centralizes the defensive
-parts of logging: matching sensitive names, redacting top-level event fields,
+parts of logging: matching sensitive names, redacting structured event fields,
 rendering console tracebacks with Rich, and producing JSON-ready exception
 dictionaries.
 
@@ -15,8 +15,8 @@ from __future__ import annotations
 import fnmatch
 import linecache
 import sys
-from collections.abc import MutableMapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, MutableMapping, Sequence
+from dataclasses import dataclass, field
 from importlib import import_module
 from typing import Any, Literal, TextIO, cast
 
@@ -32,14 +32,24 @@ type ExcInfo = tuple[type[BaseException], BaseException, Any]
 ColorSystem = Literal["auto", "standard", "256", "truecolor", "windows"]
 
 DEFAULT_REDACT_PATTERNS: tuple[str, ...] = (
+    "PAT",
+    "PAT_*",
     "*_PAT",
+    "KEY",
+    "KEY_*",
     "*_KEY",
+    "TOKEN",
+    "TOKEN_*",
     "*_TOKEN",
+    "SECRET",
+    "SECRET_*",
     "*_SECRET",
     "*PASSWORD*",
     "DATABASE_URL",
 )
 REDACTED_VALUE = "[redacted]"
+REDACTION_MAX_DEPTH = 8
+REDACTION_CYCLE_VALUE = "[circular]"
 
 
 def logging_redact_patterns(
@@ -98,6 +108,16 @@ class SecretNameMatcher:
     """
 
     patterns: tuple[str, ...]
+    _folded_patterns: tuple[str, ...] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        """Pre-fold patterns once so hot-path matching only folds names."""
+
+        object.__setattr__(
+            self,
+            "_folded_patterns",
+            tuple(pattern.casefold() for pattern in self.patterns),
+        )
 
     def matches(self, name: str) -> bool:
         """Return whether ``name`` should be treated as sensitive.
@@ -108,23 +128,26 @@ class SecretNameMatcher:
 
         folded_name = name.casefold()
         return any(
-            fnmatch.fnmatchcase(folded_name, pattern.casefold())
-            for pattern in self.patterns
+            fnmatch.fnmatchcase(folded_name, pattern)
+            for pattern in self._folded_patterns
         )
 
 
 @dataclass(frozen=True)
 class LogFieldRedactor:
-    """Redact top-level structured log fields with sensitive names.
+    """Redact structured log fields with sensitive names.
 
     This structlog processor runs before console or JSON rendering. It leaves
-    private processor metadata alone, but replaces public event fields like
-    ``OPENAI_KEY`` or ``DATABASE_URL`` with ``REDACTED_VALUE``.
+    private processor metadata alone, but replaces public event fields such as
+    ``OPENAI_KEY`` or ``DATABASE_URL`` with ``REDACTED_VALUE``. Nested
+    dictionaries, lists, and tuples are traversed with bounded recursion.
 
     :param patterns: Shell-style wildcard patterns for sensitive names.
+    :param max_depth: Maximum nested container depth to traverse.
     """
 
     patterns: tuple[str, ...]
+    max_depth: int = REDACTION_MAX_DEPTH
 
     def __call__(
         self,
@@ -132,7 +155,7 @@ class LogFieldRedactor:
         method_name: str,
         event_dict: dict[str, Any],
     ) -> dict[str, Any]:
-        """Replace sensitive top-level event values with a marker.
+        """Replace sensitive event values with a marker.
 
         :param logger: Logger currently processed by the structured formatter.
         :param method_name: Logging method name such as ``info``.
@@ -146,7 +169,160 @@ class LogFieldRedactor:
                 continue
             if matcher.matches(key):
                 event_dict[key] = REDACTED_VALUE
+                continue
+            event_dict[key] = _redact_nested_value(
+                event_dict[key],
+                matcher,
+                max_depth=self.max_depth,
+                depth=0,
+                active_ids=set(),
+            )
         return event_dict
+
+
+def _redact_nested_value(
+    value: Any,
+    matcher: SecretNameMatcher,
+    *,
+    max_depth: int,
+    depth: int,
+    active_ids: set[int],
+) -> Any:
+    """Return ``value`` with sensitive nested fields redacted.
+
+    The helper copies containers only when a child value changes. That keeps the
+    formatter path cheap for ordinary scalar-heavy log records while avoiding
+    mutation of caller-owned nested structures.
+
+    :param value: Structured value from a log event.
+    :param matcher: Name matcher for sensitive mapping keys.
+    :param max_depth: Maximum nested container depth to traverse.
+    :param depth: Current traversal depth.
+    :param active_ids: Container IDs already active on this recursion path.
+    :return: Original value or a redacted container copy.
+    """
+
+    if depth >= max_depth:
+        return value
+    if isinstance(value, Mapping):
+        return _redact_mapping(
+            value,
+            matcher,
+            max_depth=max_depth,
+            depth=depth,
+            active_ids=active_ids,
+        )
+    if isinstance(value, list):
+        return _redact_sequence(
+            value,
+            matcher,
+            max_depth=max_depth,
+            depth=depth,
+            active_ids=active_ids,
+            as_tuple=False,
+        )
+    if isinstance(value, tuple):
+        return _redact_sequence(
+            value,
+            matcher,
+            max_depth=max_depth,
+            depth=depth,
+            active_ids=active_ids,
+            as_tuple=True,
+        )
+    return value
+
+
+def _redact_mapping(
+    value: Mapping[Any, Any],
+    matcher: SecretNameMatcher,
+    *,
+    max_depth: int,
+    depth: int,
+    active_ids: set[int],
+) -> Mapping[Any, Any] | str:
+    """Return a mapping copy when any nested field needs redaction.
+
+    :param value: Mapping from a structured log field.
+    :param matcher: Name matcher for sensitive mapping keys.
+    :param max_depth: Maximum nested container depth to traverse.
+    :param depth: Current traversal depth.
+    :param active_ids: Container IDs already active on this recursion path.
+    :return: Original mapping, a redacted ``dict``, or a cycle marker.
+    """
+
+    value_id = id(value)
+    if value_id in active_ids:
+        return REDACTION_CYCLE_VALUE
+    active_ids.add(value_id)
+    try:
+        changed = False
+        redacted: dict[Any, Any] = {}
+        for key, item in value.items():
+            if matcher.matches(str(key)):
+                redacted[key] = REDACTED_VALUE
+                changed = True
+                continue
+            redacted_item = _redact_nested_value(
+                item,
+                matcher,
+                max_depth=max_depth,
+                depth=depth + 1,
+                active_ids=active_ids,
+            )
+            redacted[key] = redacted_item
+            changed = changed or redacted_item is not item
+        if changed:
+            return redacted
+        return value
+    finally:
+        active_ids.remove(value_id)
+
+
+def _redact_sequence(
+    value: list[Any] | tuple[Any, ...],
+    matcher: SecretNameMatcher,
+    *,
+    max_depth: int,
+    depth: int,
+    active_ids: set[int],
+    as_tuple: bool,
+) -> list[Any] | tuple[Any, ...] | str:
+    """Return a sequence copy when any nested field needs redaction.
+
+    :param value: List or tuple from a structured log field.
+    :param matcher: Name matcher for sensitive mapping keys.
+    :param max_depth: Maximum nested container depth to traverse.
+    :param depth: Current traversal depth.
+    :param active_ids: Container IDs already active on this recursion path.
+    :param as_tuple: Whether the original sequence was a tuple.
+    :return: Original sequence, redacted sequence copy, or a cycle marker.
+    """
+
+    value_id = id(value)
+    if value_id in active_ids:
+        return REDACTION_CYCLE_VALUE
+    active_ids.add(value_id)
+    try:
+        changed = False
+        redacted = []
+        for item in value:
+            redacted_item = _redact_nested_value(
+                item,
+                matcher,
+                max_depth=max_depth,
+                depth=depth + 1,
+                active_ids=active_ids,
+            )
+            redacted.append(redacted_item)
+            changed = changed or redacted_item is not item
+        if not changed:
+            return value
+        if as_tuple:
+            return tuple(redacted)
+        return redacted
+    finally:
+        active_ids.remove(value_id)
 
 
 @dataclass(frozen=True)

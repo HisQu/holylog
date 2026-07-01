@@ -3,7 +3,7 @@
 This module is the last step for human-readable logging. By the time
 ``AppConsoleRenderer`` runs, ``config`` has already copied stdlib ``extra``
 fields, added ``LogRecord`` metadata, filled runtime context, applied semantic
-defaults, and redacted sensitive top-level values. The renderer only decides
+defaults, and redacted sensitive structured values. The renderer only decides
 which columns to show and how to append any remaining structured fields.
 
 ``mini``, ``cli``, and ``ipy`` share the same event dictionary but use different

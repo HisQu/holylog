@@ -57,6 +57,10 @@ No breaking changes yet.
 
 ### 💔 Changed
 
+- Structured-field redaction now recursively traverses nested dictionaries,
+  lists, and tuples with bounded depth and cycle protection. Semantic helper
+  coverage now asserts that public helper methods stay aligned with
+  `SEMANTIC_EVENTS`.
 - Expanded the README and docs into a complete first-pass guide covering setup
   ownership, semantic helpers, correlation IDs, JSON output, redaction,
   lifecycle logging, telemetry, subprocess forwarding, and maintainer workflow.
