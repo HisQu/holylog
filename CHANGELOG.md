@@ -1,0 +1,85 @@
+# Changelog
+
+All notable changes to `holylog` will be documented in this file.
+
+> [!IMPORTANT]
+> ## Rules
+> 1) When bumping version, move the sub-sections from `[Unreleased]` to
+>   the new version -section. Remove empty sub-sections under released
+>   versions. Provide a new `[Unreleased]` section at the top of the
+>   changelog with all sections empty (don't remove those).
+> 2) Do not remove emojis and use `<br>` and `---`.
+> 3) Changelog entries must describe the final net difference from the previous
+>   released version. Do not list intermediate pre-release names, helper shapes,
+>   fixes, or refactors that were overwritten before release.
+> 4) Use `🔨 Fixed` only for defects in previously released behavior. For new
+>   features, describe the final shipped behavior under `➕ Added`, even if the
+>   implementation went through pre-release fixes.
+
+
+
+<br>
+
+---
+
+<br>
+
+## Table Of Contents
+
+1. [Changelog](#changelog)
+   1. [Table Of Content](#table-of-content)
+2. [\[Unreleased\]](#unreleased)
+3. [{initial\_version} - {scaffold\_date}](#initial_version---scaffold_date)
+
+<br>
+
+---
+
+<br>
+
+<!-- ======================================================== -->
+
+# [Unreleased]
+
+<br>
+
+### 💥 Breaking Change Summary
+
+No breaking changes yet.
+
+<br>
+
+### ➕ Added
+
+<br>
+
+### 💔 Changed
+
+<br>
+
+### ⚠️ Deprecated
+
+<br>
+
+### 🗑️ Removed
+
+<br>
+
+### 🔨 Fixed
+
+<br>
+
+---
+
+<br>
+
+<!-- ======================================================== -->
+
+# 0.1.0 - 2026-07-01
+
+<br>
+
+### ➕ Added
+
+- Released `holylog`.
+- Added src-layout packaging, Typer CLI entrypoints, AppRC configuration, documentation, tests, and maintainer tooling.
