@@ -5,6 +5,7 @@ from holylog.logging.config import (
     setup_logging as setup_logging,
 )
 from holylog.logging.context import (
+    cid_context as cid_context,
     clear_cid as clear_cid,
     new_cid as new_cid,
     set_cid as set_cid,

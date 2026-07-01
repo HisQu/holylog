@@ -27,6 +27,7 @@ import holylog as hlog
 | `hlog.REDACTED_VALUE` | Placeholder used for redacted structured fields and locals. |
 | `hlog.SEMANTIC_EVENTS` | Mapping of semantic event names to display metadata. |
 | `hlog.SemanticEvent` | Dataclass describing one semantic event. |
+| `hlog.cid_context(value=None)` | Scope a correlation ID and restore the previous value on exit. |
 | `hlog.set_cid(value=None)` | Set or create a correlation ID. |
 | `hlog.new_cid()` | Create a short random correlation ID. |
 | `hlog.clear_cid()` | Clear the active correlation ID. |

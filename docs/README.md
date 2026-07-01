@@ -26,4 +26,4 @@
 | Holylog | This package, `holylog`, which provides semantic stdlib logging helpers and structlog-backed formatting. |
 | semantic logger | A stdlib logger subclass with app-oriented helper methods such as `success`, `retry`, and `traceback`. |
 | renderer | The final output mode selected by `setup_logging(renderer=...)`. |
-| correlation ID | A context-local ID managed with `set_cid`, `new_cid`, and `clear_cid`. |
+| correlation ID | A context-local ID managed with `cid_context`, `set_cid`, `new_cid`, and `clear_cid`. |

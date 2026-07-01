@@ -38,4 +38,7 @@ The formatter enriches records with:
 - semantic display defaults
 - redacted structured fields and exception locals
 
+Use `cid_context()` for nested request or batch scopes that should restore the
+previous correlation ID automatically.
+
 The final renderer then emits human console text or JSON.

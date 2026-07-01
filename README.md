@@ -56,6 +56,14 @@ dependency handlers are preserved by default; pass
 `dependency_handler_policy="clear"` to clear dependency handlers and route those
 records through propagation.
 
+Use `cid_context()` to bind a correlation ID for nested work and restore the
+previous value automatically:
+
+```python
+with hlog.cid_context("request-42"):
+    LOG.info("request started")
+```
+
 Available renderers for `setup_logging(renderer=...)`:
 
 | Renderer | Output |

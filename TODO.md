@@ -12,7 +12,7 @@ Treat this as the parking lot for actionable problems discovered while working b
 > [!IMPORTANT]
 >
 > ## Rules
-> 1) Do not remove this header under any circumstances. Change only below the first `---`.
+> 1) Do not remove or change this header and TOC without very good reason.
 > 1) Newest at the top.
 > 1) Append a new entry only when the observation is real, actionable, not already listed, and out of scope for the current change. Do not modify `TODO.md` when there is nothing useful to add.
 > 1) If an issue is new and related to another issue, reference it in the `Suggested next step`. Do not create a new entry for the same problem. Place the reference in both entries (bi-directional).
@@ -72,8 +72,8 @@ Treat this as the parking lot for actionable problems discovered while working b
 1. [Todo list](#todo-list)
    1. [Table Of Contents](#table-of-contents)
 2. [2026-07-01](#2026-07-01)
-   1. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
-   2. [P1 / E2 \[Code smell\] - *CID lifecycle cannot restore an outer value*](#p1--e2-code-smell---cid-lifecycle-cannot-restore-an-outer-value)
+   1. [P2 / E2 \[Docs drift\] - The current docs seem empty](#p2--e2-docs-drift---the-current-docs-seem-empty)
+   2. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
    3. [P2 / E1 \[Code smell\] - *Async telemetry patches the event loop method*](#p2--e1-code-smell---async-telemetry-patches-the-event-loop-method)
    4. [P2 / E2 \[Code smell\] - *Redaction policy is shallow for structured fields*](#p2--e2-code-smell---redaction-policy-is-shallow-for-structured-fields)
    5. [P2 / E3 \[Code smell\] - *Semantic event methods can drift from the registry*](#p2--e3-code-smell---semantic-event-methods-can-drift-from-the-registry)
@@ -87,22 +87,11 @@ Treat this as the parking lot for actionable problems discovered while working b
 
 # 2026-07-01
 
+## P2 / E2 [Docs drift] - The current docs seem empty
+- We need a deep analysis to properly structure and fill each doc markdown file.
+
 ## P3 / E3 [Code smell] - remove useless nesting
 - The `holylog.logging` level is currently useless. Find a better architecture.
-
-## P1 / E2 [Code smell] - *CID lifecycle cannot restore an outer value*
-
-- **Area:** `src/holylog/logging/context.py`
-- **Observed while:** Holylog split code-smell pass.
-- **Evidence:** `set_cid()` stores a new value and returns only the string.
-  `clear_cid()` always sets the context variable to `None`. Callers cannot use
-  the `ContextVar` token to restore a previous CID after nested request, batch,
-  or test scopes.
-- **Why not fixed now:** Changing `set_cid()`'s return value would be a public
-  API change, and the split intentionally kept the migrated API stable.
-- **Suggested next step:** Add a `cid_context(value=None)` context manager or a
-  token-returning helper, keep `set_cid()` returning `str`, and test nested CID
-  scopes across sync and async call paths.
 
 ## P2 / E1 [Code smell] - *Async telemetry patches the event loop method*
 

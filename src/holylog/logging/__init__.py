@@ -9,6 +9,7 @@ from holylog.logging.config import (
     setup_logging,
 )
 from holylog.logging.context import (
+    cid_context,
     clear_cid,
     new_cid,
     set_cid,
@@ -38,6 +39,7 @@ __all__ = [
     "SEMANTIC_EVENTS",
     "SemanticEvent",
     "async_telemetry",
+    "cid_context",
     "clear_cid",
     "forward_cli_output",
     "get_logger",

@@ -19,9 +19,10 @@ import asyncio
 import logging
 import threading
 import uuid
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from datetime import datetime
 from time import perf_counter
+from types import TracebackType
 from typing import Any
 
 from holylog.logging._optional import optional_structlog_contextvars
@@ -30,6 +31,114 @@ from holylog.logging._optional import optional_structlog_contextvars
 CID: ContextVar[str | None] = ContextVar("holylog_cid", default=None)
 STARTED_AT = datetime.now().astimezone()
 STARTED_MONOTONIC = perf_counter()
+
+
+def _bind_cid(
+    value: str | None = None,
+) -> tuple[str, Token[str | None], Any | None, dict[str, Any] | None]:
+    """Bind a CID and return tokens needed for scoped restoration.
+
+    :param value: Explicit correlation ID, or ``None`` to create a new one.
+    :return: Active CID, Holylog token, structlog contextvars module, and
+        structlog token mapping.
+    """
+
+    cid = value or new_cid()
+    cid_token = CID.set(cid)
+    structlog_contextvars = optional_structlog_contextvars()
+    structlog_tokens = None
+    if structlog_contextvars is not None:
+        structlog_tokens = dict(structlog_contextvars.bind_contextvars(cid=cid))
+    return cid, cid_token, structlog_contextvars, structlog_tokens
+
+
+class _CidContext:
+    """Context manager that restores the previous CID on exit.
+
+    :param value: Explicit correlation ID, or ``None`` to create a new one.
+    """
+
+    def __init__(self, value: str | None = None) -> None:
+        self._value = value
+        self._cid_token: Token[str | None] | None = None
+        self._structlog_contextvars: Any | None = None
+        self._structlog_tokens: dict[str, Any] | None = None
+
+    def __enter__(self) -> str:
+        """Bind the scoped CID.
+
+        :return: Active correlation ID for the scope.
+        """
+
+        if self._cid_token is not None:
+            raise RuntimeError("cid_context cannot be entered twice at once")
+        cid, cid_token, structlog_contextvars, structlog_tokens = _bind_cid(
+            self._value
+        )
+        self._cid_token = cid_token
+        self._structlog_contextvars = structlog_contextvars
+        self._structlog_tokens = structlog_tokens
+        return cid
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        """Restore CID state when leaving a ``with`` block.
+
+        :param exc_type: Exception type supplied by the context protocol.
+        :param exc: Exception instance supplied by the context protocol.
+        :param tb: Traceback supplied by the context protocol.
+        :return: ``None``.
+        """
+
+        self._reset()
+
+    async def __aenter__(self) -> str:
+        """Bind the scoped CID for ``async with`` usage.
+
+        :return: Active correlation ID for the scope.
+        """
+
+        return self.__enter__()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        """Restore CID state when leaving an ``async with`` block.
+
+        :param exc_type: Exception type supplied by the context protocol.
+        :param exc: Exception instance supplied by the context protocol.
+        :param tb: Traceback supplied by the context protocol.
+        :return: ``None``.
+        """
+
+        self._reset()
+
+    def _reset(self) -> None:
+        """Restore the context-local CID state captured on entry.
+
+        :return: ``None``.
+        """
+
+        if self._cid_token is None:
+            return
+        CID.reset(self._cid_token)
+        if (
+            self._structlog_contextvars is not None
+            and self._structlog_tokens is not None
+        ):
+            self._structlog_contextvars.reset_contextvars(
+                **self._structlog_tokens
+            )
+        self._cid_token = None
+        self._structlog_contextvars = None
+        self._structlog_tokens = None
 
 
 def new_cid() -> str:
@@ -52,12 +161,22 @@ def set_cid(value: str | None = None) -> str:
     :return: The active correlation ID.
     """
 
-    cid = value or new_cid()
-    CID.set(cid)
-    structlog_contextvars = optional_structlog_contextvars()
-    if structlog_contextvars is not None:
-        structlog_contextvars.bind_contextvars(cid=cid)
+    cid, _, _, _ = _bind_cid(value)
     return cid
+
+
+def cid_context(value: str | None = None) -> _CidContext:
+    """Return a context manager for a scoped correlation ID.
+
+    The manager supports both ``with`` and ``async with``. It yields the active
+    CID and restores the previous Holylog and structlog contextvars state when
+    the scope exits.
+
+    :param value: Explicit correlation ID, or ``None`` to create a new one.
+    :return: Context manager that yields the active correlation ID.
+    """
+
+    return _CidContext(value)
 
 
 def clear_cid() -> None:
@@ -165,6 +284,7 @@ __all__ = [
     "STARTED_AT",
     "add_log_record_fields",
     "add_runtime_context",
+    "cid_context",
     "clear_cid",
     "current_task_name",
     "elapsed_seconds",

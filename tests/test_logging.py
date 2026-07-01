@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import structlog.contextvars as structlog_contextvars
 
 from holylog.logging.context import CID
 import holylog as hlog
@@ -74,11 +75,16 @@ def _clear_handlers(logger: logging.Logger) -> None:
         handler.close()
 
 
+def _structlog_cid() -> object | None:
+    return structlog_contextvars.get_contextvars().get("cid")
+
+
 def test_flat_import_exports_public_api() -> None:
     assert hlog.get_logger is not None
     assert hlog.setup_logging is not None
     assert hlog.AppLogger is not None
     assert hlog.DependencyHandlerPolicy is not None
+    assert hlog.cid_context is not None
     assert hlog.REDACTED_VALUE == "[redacted]"
     assert hlog.SEMANTIC_EVENTS["SUCCESS"].name == "SUCCESS"
     assert "setup_logger" not in hlog.__all__
@@ -382,6 +388,85 @@ def test_cid_helpers_propagate_context(
     assert caplog.records[-1].cid == cid
     hlog.clear_cid()
     assert CID.get() is None
+
+
+def test_cid_context_creates_and_restores_empty_scope(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    hlog.clear_cid()
+    structlog_contextvars.clear_contextvars()
+    hlog.setup_logging(level="INFO", colorize=False, force=False)
+    log = hlog.get_logger("holylog.tests.cid_context_empty")
+
+    try:
+        with hlog.cid_context() as cid:
+            assert cid
+            assert CID.get() == cid
+            assert _structlog_cid() == cid
+            with caplog.at_level(
+                logging.INFO,
+                logger="holylog.tests.cid_context_empty",
+            ):
+                log.info("with generated cid")
+
+        assert caplog.records[-1].cid == cid
+        assert CID.get() is None
+        assert _structlog_cid() is None
+    finally:
+        hlog.clear_cid()
+        structlog_contextvars.clear_contextvars()
+
+
+def test_cid_context_restores_outer_scope(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    hlog.clear_cid()
+    structlog_contextvars.clear_contextvars()
+    hlog.setup_logging(level="INFO", colorize=False, force=False)
+    log = hlog.get_logger("holylog.tests.cid_context_nested")
+    outer = hlog.set_cid("outer-cid")
+
+    try:
+        with caplog.at_level(
+            logging.INFO,
+            logger="holylog.tests.cid_context_nested",
+        ):
+            with hlog.cid_context("inner-cid") as inner:
+                log.info("inner")
+                assert inner == "inner-cid"
+                assert CID.get() == "inner-cid"
+                assert _structlog_cid() == "inner-cid"
+            log.info("outer")
+
+        assert outer == "outer-cid"
+        assert CID.get() == "outer-cid"
+        assert _structlog_cid() == "outer-cid"
+        assert caplog.records[-2].cid == "inner-cid"
+        assert caplog.records[-1].cid == "outer-cid"
+    finally:
+        hlog.clear_cid()
+        structlog_contextvars.clear_contextvars()
+
+
+@pytest.mark.asyncio
+async def test_async_cid_context_restores_outer_scope() -> None:
+    hlog.clear_cid()
+    structlog_contextvars.clear_contextvars()
+    outer = hlog.set_cid("outer-async")
+
+    try:
+        async with hlog.cid_context("async-cid") as cid:
+            await asyncio.sleep(0)
+            assert cid == "async-cid"
+            assert CID.get() == "async-cid"
+            assert _structlog_cid() == "async-cid"
+
+        assert outer == "outer-async"
+        assert CID.get() == "outer-async"
+        assert _structlog_cid() == "outer-async"
+    finally:
+        hlog.clear_cid()
+        structlog_contextvars.clear_contextvars()
 
 
 def test_json_logging_includes_extras_and_structured_exceptions(

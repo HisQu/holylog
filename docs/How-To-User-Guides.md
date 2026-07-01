@@ -68,6 +68,15 @@ LOG.success("Workspace ready", extra_struct={"workspace": "default"})
 Pass structured fields through `extra_struct={...}`. Bare custom keyword
 arguments are rejected so calls stay close to stdlib logging.
 
+Bind correlation IDs around request, job, or batch scopes:
+
+```python
+with hlog.cid_context("request-42"):
+    LOG.info("request started")
+```
+
+`cid_context()` also works with `async with` and restores any outer CID on exit.
+
 ## Emit JSON Logs
 
 ```python
