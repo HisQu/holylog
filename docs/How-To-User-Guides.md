@@ -263,10 +263,9 @@ async def sync_users() -> None:
     ...
 ```
 
-> [!WARNING]
-> The current telemetry implementation patches the running event loop's
-> `create_task` method while the context is active. Nested or overlapping
-> telemetry contexts are tracked as a TODO for a later design pass.
+Telemetry tags the active async context and counts child tasks that inherit
+that tag. Nested and overlapping telemetry scopes can run without modifying the
+event loop.
 
 ## Forward Subprocess Output
 

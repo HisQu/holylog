@@ -8,7 +8,7 @@
 4. [Handler Ownership](#handler-ownership)
 5. [Correlation IDs](#correlation-ids)
 6. [Redaction Scope](#redaction-scope)
-7. [Async Telemetry Caveat](#async-telemetry-caveat)
+7. [Async Telemetry](#async-telemetry)
 8. [Flat Facade](#flat-facade)
 
 ## Design Model
@@ -126,19 +126,18 @@ extra allocation.
 > fields such as `token`, `api_key`, `password`, `secret`, or a project-specific
 > pattern passed with `extra_redact_patterns`.
 
-## Async Telemetry Caveat
+## Async Telemetry
 
-Async telemetry counts tasks created while the context is active. The current
-implementation does that by temporarily wrapping the running event loop's
-`create_task` method, then restoring it when telemetry exits.
+Async telemetry counts child tasks that inherit the active telemetry scope.
+Holylog stores the active scope stack in a context variable. Python copies
+context variables into newly created tasks, so tasks started inside a telemetry
+block carry that scope without any event-loop monkeypatching.
 
-That design works for a single scoped telemetry block, but nested or
-overlapping telemetry contexts on the same event loop need a safer design.
-
-> [!WARNING]
-> Telemetry task tracking is tracked in
-> [TODO](../TODO.md#p2--e1-code-smell---async-telemetry-patches-the-event-loop-method).
-> Prefer one active telemetry context per event loop until that pass lands.
+Snapshots inspect task contexts with `asyncio.Task.get_context()`, exclude
+Holylog's reporter task and the owning task, and count active child tasks that
+contain the scope. Nested telemetry scopes are represented as a scope stack, so
+a task created inside an inner scope can be counted by both the inner and outer
+telemetry contexts.
 
 ## Flat Facade
 

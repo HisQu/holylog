@@ -193,12 +193,15 @@ The telemetry snapshot includes:
 | Field | Meaning |
 |---|---|
 | `label` | Scope label. |
-| `active_tasks_in_scope` | Active tasks created while the context is active. |
+| `active_tasks_in_scope` | Active child tasks that inherited the telemetry scope. |
 | `tasks_total` | Total tasks in the running event loop. |
 | `threads` | Active OS thread count when `include_threads=True`. |
 
 `extras` may return additional fields merged into telemetry snapshots and log
 messages.
+
+Telemetry uses contextvars to identify child tasks. It does not patch the event
+loop's task creation methods.
 
 ## Lifecycle Logging
 

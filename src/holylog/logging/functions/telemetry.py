@@ -1,9 +1,10 @@
 """Async telemetry helpers for Holylog's stdlib semantic logger.
 
 Telemetry is a lightweight progress heartbeat for async workflows. The context
-manager temporarily wraps the running event loop's ``create_task`` method so it
-can count tasks spawned inside the scope, starts a reporter task, and emits
-periodic ``TELEMETRY`` log messages through the normal Holylog logger pipeline.
+manager tags the current async context with a telemetry scope, starts a reporter
+task outside that scope, and emits periodic ``TELEMETRY`` log messages through
+the normal Holylog logger pipeline. Tasks created inside the scope inherit the
+context tag, so snapshots can count them without patching the event loop.
 
 No separate metrics backend is involved. Extra counters are pulled from an
 optional callback and included in the human message so they appear in console
@@ -15,11 +16,28 @@ from __future__ import annotations
 import asyncio
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable
+from contextvars import Context, ContextVar, Token, copy_context
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
 from holylog.logging.core import AppLogger, get_logger
+
+_TELEMETRY_SCOPES: ContextVar[tuple[object, ...]] = ContextVar(
+    "holylog_telemetry_scopes",
+    default=(),
+)
+
+
+def _reporter_context() -> Context:
+    """Return a context that keeps caller values except telemetry scopes.
+
+    :return: Context used to run Holylog's internal reporter task.
+    """
+
+    context = copy_context()
+    context.run(_TELEMETRY_SCOPES.set, ())
+    return context
 
 
 def _frame_name(depth: int = 0) -> str:
@@ -43,11 +61,11 @@ def _frame_name(depth: int = 0) -> str:
 class AsyncTelemetryContext:
     """Context manager for periodic async telemetry logging.
 
-    Entering the context captures the current event loop, patches
-    ``loop.create_task`` to remember tasks created in the scope, and starts a
-    reporter task. Exiting restores the original task factory and signals the
-    reporter to stop. The async exit path awaits the reporter so the final
-    cleanup is deterministic.
+    Entering the context captures the current event loop, starts a reporter
+    task outside the telemetry scope, and appends this scope to a context
+    variable inherited by child tasks. Exiting restores the previous context
+    value and signals the reporter to stop. The async exit path awaits the
+    reporter so cleanup is deterministic.
 
     :param interval: Seconds between telemetry messages.
     :param label: Human-readable telemetry scope label.
@@ -70,9 +88,10 @@ class AsyncTelemetryContext:
         self.logger = logger or get_logger(__name__)
         self.include_threads = include_threads
         self.extras = extras
+        self._scope: object = object()
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._orig_create_task: Callable[..., asyncio.Task[Any]] | None = None
-        self._scope_tasks: set[asyncio.Task[Any]] = set()
+        self._scope_token: Token[tuple[object, ...]] | None = None
+        self._owner_task: asyncio.Task[Any] | None = None
         self._stop_evt: asyncio.Event | None = None
         self._reporter: asyncio.Task[None] | None = None
 
@@ -125,8 +144,8 @@ class AsyncTelemetryContext:
         :return: Snapshot data for active tasks, total tasks, and extras.
         """
 
-        active_scope = sum(1 for t in list(self._scope_tasks) if not t.done())
-        tasks_total = sum(1 for _ in asyncio.all_tasks())
+        active_scope = len(self._active_scope_tasks())
+        tasks_total = len(self._all_tasks())
         data: dict[str, Any] = {
             "label": self.label,
             "active_tasks_in_scope": active_scope,
@@ -139,44 +158,33 @@ class AsyncTelemetryContext:
         return data
 
     def _start(self) -> None:
-        """Patch task creation and start the reporter task.
+        """Bind the telemetry scope and start the reporter task.
 
         :return: ``None``.
         """
 
+        if self._loop is not None:
+            raise RuntimeError("async telemetry context is already active")
         self._loop = asyncio.get_running_loop()
+        self._owner_task = asyncio.current_task(self._loop)
         self._stop_evt = asyncio.Event()
-        orig_create_task: Callable[..., asyncio.Task[Any]] = (
-            self._loop.create_task
-        )
-        self._orig_create_task = orig_create_task
-
-        def _patched_create_task(
-            coro: Any,
-            *args: Any,
-            **kwargs: Any,
-        ) -> asyncio.Task[Any]:
-            task = orig_create_task(coro, *args, **kwargs)
-            self._scope_tasks.add(task)
-            return task
-
-        self._loop.create_task = _patched_create_task
-        self._reporter = orig_create_task(
+        self._reporter = self._loop.create_task(
             self._reporter_loop(),
             name=f"{self.label}:telemetry",
+            context=_reporter_context(),
         )
+        scopes = _TELEMETRY_SCOPES.get()
+        self._scope_token = _TELEMETRY_SCOPES.set((*scopes, self._scope))
 
     async def _stop_async(self) -> None:
-        """Restore the event loop and await the reporter task.
+        """Restore telemetry context and await the reporter task.
 
         :return: ``None``.
         """
 
         if self._loop is None:
             return
-        if self._orig_create_task is not None:
-            self._loop.create_task = self._orig_create_task
-            self._orig_create_task = None
+        self._reset_scope()
         if self._stop_evt is not None:
             self._stop_evt.set()
         if self._reporter is not None:
@@ -184,20 +192,66 @@ class AsyncTelemetryContext:
                 await self._reporter
             finally:
                 self._reporter = None
+        self._loop = None
+        self._owner_task = None
+        self._stop_evt = None
 
     def _stop_sync(self) -> None:
-        """Restore the event loop and signal the reporter task.
+        """Restore telemetry context and signal the reporter task.
 
         :return: ``None``.
         """
 
         if self._loop is None:
             return
-        if self._orig_create_task is not None:
-            self._loop.create_task = self._orig_create_task
-            self._orig_create_task = None
+        self._reset_scope()
         if self._stop_evt is not None:
             self._stop_evt.set()
+
+    def _reset_scope(self) -> None:
+        """Restore the previous telemetry scope stack.
+
+        :return: ``None``.
+        """
+
+        if self._scope_token is None:
+            return
+        _TELEMETRY_SCOPES.reset(self._scope_token)
+        self._scope_token = None
+
+    def _all_tasks(self) -> set[asyncio.Task[Any]]:
+        """Return current tasks for the captured loop.
+
+        :return: Tasks for the telemetry loop, or an empty set before start.
+        """
+
+        if self._loop is None:
+            return set()
+        return asyncio.all_tasks(self._loop)
+
+    def _active_scope_tasks(self) -> set[asyncio.Task[Any]]:
+        """Return active child tasks that inherited this telemetry scope.
+
+        :return: Active scoped tasks, excluding the owner and reporter tasks.
+        """
+
+        return {
+            task
+            for task in self._all_tasks()
+            if not task.done()
+            and task is not self._owner_task
+            and task is not self._reporter
+            and self._task_has_scope(task)
+        }
+
+    def _task_has_scope(self, task: asyncio.Task[Any]) -> bool:
+        """Return whether ``task`` inherited this telemetry scope.
+
+        :param task: Asyncio task being inspected.
+        :return: ``True`` when the task context contains this scope.
+        """
+
+        return self._scope in task.get_context().get(_TELEMETRY_SCOPES, ())
 
     async def _reporter_loop(self) -> None:
         """Emit telemetry until the stop event is set.
@@ -226,17 +280,22 @@ class AsyncTelemetryContext:
         :return: ``None``.
         """
 
-        self._scope_tasks = {t for t in self._scope_tasks if not t.done()}
-        all_tasks: Iterable[asyncio.Task[Any]] = asyncio.all_tasks()
-        tasks_total = sum(1 for _ in all_tasks)
+        snapshot = self.snapshot()
         parts = [
-            f"[Active / Total Tasks: {len(self._scope_tasks)}/{tasks_total}]",
+            "[Active / Total Tasks: "
+            f"{snapshot['active_tasks_in_scope']}/{snapshot['tasks_total']}]",
         ]
-        if self.include_threads:
-            parts.append(f"[OS Threads: {threading.active_count()}]")
-        if self.extras:
-            for key, value in self.extras().items():
-                parts.append(f"[{key}={value}]")
+        if "threads" in snapshot:
+            parts.append(f"[OS Threads: {snapshot['threads']}]")
+        for key, value in snapshot.items():
+            if key in {
+                "label",
+                "active_tasks_in_scope",
+                "tasks_total",
+                "threads",
+            }:
+                continue
+            parts.append(f"[{key}={value}]")
         self.logger.telemetry(" ".join(parts), depth=depth)
 
 

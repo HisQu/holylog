@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -116,6 +117,14 @@ def _clear_handlers(logger: logging.Logger) -> None:
 
 def _structlog_cid() -> object | None:
     return structlog_contextvars.get_contextvars().get("cid")
+
+
+async def _cancel_tasks(*tasks: asyncio.Task[Any]) -> None:
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 def test_flat_import_exports_public_api() -> None:
@@ -593,6 +602,125 @@ def test_redactor_bounds_cycles_and_depth() -> None:
     assert redacted["cyclic"] == {"self": "[circular]"}
     assert cyclic["self"] is cyclic
     assert redacted["bounded"]["level1"]["level2"]["secret"] == "too deep"
+
+
+@pytest.mark.asyncio
+async def test_async_telemetry_tracks_tasks_without_patching_loop() -> None:
+    loop = asyncio.get_running_loop()
+    original_create_task = loop.create_task
+
+    async with hlog.async_telemetry(
+        "scope",
+        interval=3600.0,
+        include_threads=False,
+    ) as telemetry:
+        assert loop.create_task == original_create_task
+        assert "create_task" not in getattr(loop, "__dict__", {})
+        tasks = [
+            asyncio.create_task(asyncio.sleep(10), name="scope-child-a"),
+            asyncio.create_task(asyncio.sleep(10), name="scope-child-b"),
+        ]
+        try:
+            await asyncio.sleep(0)
+            assert telemetry.snapshot()["active_tasks_in_scope"] == 2
+        finally:
+            await _cancel_tasks(*tasks)
+
+    assert loop.create_task == original_create_task
+    assert "create_task" not in getattr(loop, "__dict__", {})
+
+
+@pytest.mark.asyncio
+async def test_async_telemetry_nested_scopes_count_inherited_tasks() -> None:
+    async with hlog.async_telemetry(
+        "outer",
+        interval=3600.0,
+        include_threads=False,
+    ) as outer:
+        outer_task = asyncio.create_task(
+            asyncio.sleep(10),
+            name="outer-child",
+        )
+        try:
+            await asyncio.sleep(0)
+            assert outer.snapshot()["active_tasks_in_scope"] == 1
+
+            async with hlog.async_telemetry(
+                "inner",
+                interval=3600.0,
+                include_threads=False,
+            ) as inner:
+                inner_task = asyncio.create_task(
+                    asyncio.sleep(10),
+                    name="inner-child",
+                )
+                try:
+                    await asyncio.sleep(0)
+                    assert outer.snapshot()["active_tasks_in_scope"] == 2
+                    assert inner.snapshot()["active_tasks_in_scope"] == 1
+                finally:
+                    await _cancel_tasks(inner_task)
+        finally:
+            await _cancel_tasks(outer_task)
+
+
+@pytest.mark.asyncio
+async def test_async_telemetry_overlapping_scopes_do_not_interfere() -> None:
+    async def run_scope(label: str) -> int:
+        async with hlog.async_telemetry(
+            label,
+            interval=3600.0,
+            include_threads=False,
+        ) as telemetry:
+            task = asyncio.create_task(
+                asyncio.sleep(10),
+                name=f"{label}-child",
+            )
+            try:
+                await asyncio.sleep(0)
+                return int(telemetry.snapshot()["active_tasks_in_scope"])
+            finally:
+                await _cancel_tasks(task)
+
+    counts = await asyncio.gather(run_scope("left"), run_scope("right"))
+
+    assert counts == [1, 1]
+
+
+@pytest.mark.asyncio
+async def test_async_telemetry_drops_cancelled_tasks_from_snapshot() -> None:
+    async with hlog.async_telemetry(
+        "cancel",
+        interval=3600.0,
+        include_threads=False,
+    ) as telemetry:
+        task = asyncio.create_task(asyncio.sleep(10), name="cancel-child")
+        await asyncio.sleep(0)
+        assert telemetry.snapshot()["active_tasks_in_scope"] == 1
+
+        await _cancel_tasks(task)
+
+        assert telemetry.snapshot()["active_tasks_in_scope"] == 0
+
+
+@pytest.mark.asyncio
+async def test_async_telemetry_sync_context_inside_running_loop() -> None:
+    with hlog.async_telemetry(
+        "sync-context",
+        interval=3600.0,
+        include_threads=False,
+    ) as telemetry:
+        task = asyncio.create_task(
+            asyncio.sleep(10),
+            name="sync-context-child",
+        )
+        try:
+            await asyncio.sleep(0)
+            assert telemetry.snapshot()["active_tasks_in_scope"] == 1
+        finally:
+            await _cancel_tasks(task)
+
+    await asyncio.sleep(0)
 
 
 @pytest.mark.asyncio

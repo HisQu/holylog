@@ -73,8 +73,7 @@ Treat this as the parking lot for actionable problems discovered while working b
    1. [Table Of Contents](#table-of-contents)
 2. [2026-07-01](#2026-07-01)
    1. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
-   2. [P2 / E1 \[Code smell\] - *Async telemetry patches the event loop method*](#p2--e1-code-smell---async-telemetry-patches-the-event-loop-method)
-   3. [P3 / E1 \[Code smell\] - *Structlog compatibility layer still reads as optional*](#p3--e1-code-smell---structlog-compatibility-layer-still-reads-as-optional)
+   2. [P3 / E1 \[Code smell\] - *Structlog compatibility layer still reads as optional*](#p3--e1-code-smell---structlog-compatibility-layer-still-reads-as-optional)
 
 <br>
 
@@ -86,21 +85,6 @@ Treat this as the parking lot for actionable problems discovered while working b
 
 ## P3 / E3 [Code smell] - remove useless nesting
 - The `holylog.logging` level is currently useless. Find a better architecture.
-
-## P2 / E1 [Code smell] - *Async telemetry patches the event loop method*
-
-- **Area:** `src/holylog/logging/functions/telemetry.py`
-- **Observed while:** Holylog split code-smell pass.
-- **Evidence:** `AsyncTelemetryContext._start()` assigns a wrapper directly to
-  `loop.create_task`. Nested or concurrent telemetry contexts on the same loop
-  can overwrite each other's saved method. The synchronous `with` exit restores
-  the method and signals the reporter, but cannot await the reporter task.
-- **Why not fixed now:** Reworking telemetry needs a design pass and behavior
-  tests for nested contexts, overlapping contexts, cancellation, and sync
-  context-manager usage inside a running loop.
-- **Suggested next step:** Replace direct method patching with a narrower task
-  tracking strategy, or explicitly document and enforce one active telemetry
-  context per loop. Add tests for nested contexts before changing behavior.
 
 ## P3 / E1 [Code smell] - *Structlog compatibility layer still reads as optional*
 

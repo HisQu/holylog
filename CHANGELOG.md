@@ -57,6 +57,9 @@ No breaking changes yet.
 
 ### 💔 Changed
 
+- Async telemetry now tracks scoped child tasks with contextvars instead of
+  patching the event loop's `create_task` method. Nested and overlapping
+  telemetry contexts now have regression coverage.
 - Structured-field redaction now recursively traverses nested dictionaries,
   lists, and tuples with bounded depth and cycle protection. Semantic helper
   coverage now asserts that public helper methods stay aligned with
