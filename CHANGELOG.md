@@ -31,7 +31,8 @@ All notable changes to `holylog` will be documented in this file.
 1. [Changelog](#changelog)
    1. [Table Of Contents](#table-of-contents)
    2. [\[Unreleased\]](#unreleased)
-   3. [0.1.0 - 2026-07-01](#010---2026-07-01)
+   3. [0.2.0 - 2026-07-01](#020---2026-07-01)
+   4. [0.1.0 - 2026-07-01](#010---2026-07-01)
 
 <br>
 
@@ -43,6 +44,20 @@ All notable changes to `holylog` will be documented in this file.
 
 
 ## [Unreleased]
+
+### 💥 Breaking Change Summary
+
+### ➕ Added
+
+### 💔 Changed
+
+### ⚠️ Deprecated
+
+### 🗑️ Removed
+
+### 🔨 Fixed
+
+## 0.2.0 - 2026-07-01
 
 ### 💥 Breaking Change Summary
 
@@ -91,8 +106,6 @@ All notable changes to `holylog` will be documented in this file.
 ### 🗑️ Removed
 
 - Removed the nested `holylog.logging` implementation package.
-
-### 🔨 Fixed
 
 ## 0.1.0 - 2026-07-01
 
