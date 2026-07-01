@@ -57,6 +57,9 @@ No breaking changes yet.
 
 ### 💔 Changed
 
+- Structlog support is now modeled as a required runtime dependency through a
+  compatibility helper with friendly missing/incompatible dependency errors.
+  CID helpers no longer silently skip structlog context binding.
 - Async telemetry now tracks scoped child tasks with contextvars instead of
   patching the event loop's `create_task` method. Nested and overlapping
   telemetry contexts now have regression coverage.

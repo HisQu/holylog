@@ -23,7 +23,7 @@ from typing import Any, Literal, TextIO, cast
 from rich.console import Console
 from rich.traceback import Trace, Traceback
 
-from holylog.logging._optional import require_structlog
+from holylog.logging.compat import validate_structlog
 
 
 type ExcInfo = tuple[type[BaseException], BaseException, Any]
@@ -411,7 +411,7 @@ class RedactedExceptionDictTransformer:
         :return: JSON-serializable stack dictionaries.
         """
 
-        require_structlog()
+        validate_structlog()
         transformer_module = cast(Any, import_module("structlog.tracebacks"))
         transformer_cls = transformer_module.ExceptionDictTransformer
         transformer = transformer_cls(
@@ -444,7 +444,7 @@ def json_exception_renderer(
     :return: Structlog processor that writes an ``exception`` field.
     """
 
-    require_structlog()
+    validate_structlog()
     processor_module = cast(Any, import_module("structlog.processors"))
     renderer_cls = processor_module.ExceptionRenderer
     transformer = RedactedExceptionDictTransformer(

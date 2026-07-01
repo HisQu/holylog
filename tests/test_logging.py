@@ -188,6 +188,51 @@ def test_get_logger_rejects_precreated_plain_logger() -> None:
     )
 
 
+def test_cid_helpers_require_structlog_with_friendly_error() -> None:
+    script = textwrap.dedent(
+        """
+        import builtins
+
+        original_import = builtins.__import__
+
+        def blocked_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "structlog" or name.startswith("structlog."):
+                raise ModuleNotFoundError(
+                    "No module named 'structlog'",
+                    name="structlog",
+                )
+            return original_import(name, globals, locals, fromlist, level)
+
+        builtins.__import__ = blocked_import
+
+        import holylog as hlog
+        from holylog.logging.context import CID
+
+        try:
+            hlog.set_cid("blocked")
+        except ImportError as exc:
+            assert "structlog>=25.5" in str(exc)
+            assert "python -m pip install" in str(exc)
+            assert CID.get() is None
+        else:
+            raise AssertionError("set_cid() did not require structlog")
+        """
+    )
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join(
+            (str(ROOT / "src"), os.environ.get("PYTHONPATH", ""))
+        ),
+    }
+    subprocess.run(
+        [sys.executable, "-c", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
 def test_setup_logging_can_configure_named_logger_without_replacing_root() -> (
     None
 ):

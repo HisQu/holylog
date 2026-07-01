@@ -1,18 +1,17 @@
-"""Dependency validation helpers for Holylog logging."""
+"""Required dependency validation helpers for Holylog logging."""
 
 from __future__ import annotations
 
 from importlib import import_module
 from typing import Any
 
-LOGGING_EXTRA_INSTALL_HINT = (
-    "Install Holylog structured logging support with: "
-    'python -m pip install "holylog"'
+STRUCTLOG_INSTALL_HINT = (
+    "Holylog requires structlog>=25.5. Install or repair Holylog runtime "
+    'dependencies with: python -m pip install "holylog"'
 )
 STRUCTLOG_COMPATIBILITY_HINT = (
-    "Holylog structured logging requires structlog>=25.5 with contextvars, "
-    "stdlib, and processors support. Install compatible dependencies with: "
-    'python -m pip install "holylog"'
+    "Holylog requires structlog>=25.5 with contextvars, stdlib, and processors "
+    'support. Install compatible dependencies with: python -m pip install "holylog"'
 )
 
 
@@ -38,12 +37,12 @@ def _is_missing_structlog_package(exc: ModuleNotFoundError) -> bool:
 
 
 def missing_structlog_error() -> ImportError:
-    """Return the public error used when structured logging support is absent.
+    """Return the public error used when required structlog support is absent.
 
     :return: Import error with the Holylog installation hint.
     """
 
-    return ImportError(LOGGING_EXTRA_INSTALL_HINT)
+    return ImportError(STRUCTLOG_INSTALL_HINT)
 
 
 def incompatible_structlog_error(detail: str) -> ImportError:
@@ -88,24 +87,21 @@ def _require_attr(owner: Any, dotted_name: str) -> None:
             raise incompatible_structlog_error(dotted_name) from exc
 
 
-def optional_structlog_contextvars() -> Any | None:
-    """Return structlog contextvars support when the dependency is present.
+def require_structlog_contextvars() -> Any:
+    """Return required structlog contextvars support.
 
-    :return: ``structlog.contextvars`` module, or ``None`` when structlog is
-        not installed.
-    :raises ImportError: If structlog is installed but lacks contextvars
-        support required by Holylog.
+    :return: Imported ``structlog.contextvars`` module.
+    :raises ImportError: If structlog is missing or lacks contextvars support.
     """
 
-    try:
-        return import_module("structlog.contextvars")
-    except ModuleNotFoundError as exc:
-        if _is_missing_structlog_package(exc):
-            return None
-        raise incompatible_structlog_error("structlog.contextvars") from exc
+    contextvars = _require_module("structlog.contextvars")
+    _require_attr(contextvars, "bind_contextvars")
+    _require_attr(contextvars, "reset_contextvars")
+    _require_attr(contextvars, "unbind_contextvars")
+    return contextvars
 
 
-def require_structlog() -> Any:
+def validate_structlog() -> Any:
     """Return a validated structlog module or raise Holylog guidance.
 
     :return: Imported ``structlog`` module.
@@ -118,7 +114,7 @@ def require_structlog() -> Any:
         if not _is_missing_structlog(exc):
             raise
         raise missing_structlog_error() from exc
-    contextvars = _require_module("structlog.contextvars")
+    contextvars = require_structlog_contextvars()
     stdlib = _require_module("structlog.stdlib")
     processors = _require_module("structlog.processors")
     _require_attr(contextvars, "merge_contextvars")
@@ -130,10 +126,10 @@ def require_structlog() -> Any:
 
 
 __all__ = [
-    "LOGGING_EXTRA_INSTALL_HINT",
     "STRUCTLOG_COMPATIBILITY_HINT",
+    "STRUCTLOG_INSTALL_HINT",
     "incompatible_structlog_error",
     "missing_structlog_error",
-    "optional_structlog_contextvars",
-    "require_structlog",
+    "require_structlog_contextvars",
+    "validate_structlog",
 ]

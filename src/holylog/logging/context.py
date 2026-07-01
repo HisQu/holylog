@@ -9,8 +9,7 @@ or OS thread for console scans.
 The structured logging processors here are deliberately conservative: they use
 ``setdefault`` so explicit caller fields survive, and they copy stdlib
 ``LogRecord`` attributes into renderer-friendly names only when a record is
-available. The module itself stays stdlib-only so semantic loggers can still
-emit before formatting is configured.
+available.
 """
 
 from __future__ import annotations
@@ -25,7 +24,7 @@ from time import perf_counter
 from types import TracebackType
 from typing import Any
 
-from holylog.logging._optional import optional_structlog_contextvars
+from holylog.logging.compat import require_structlog_contextvars
 
 
 CID: ContextVar[str | None] = ContextVar("holylog_cid", default=None)
@@ -35,7 +34,7 @@ STARTED_MONOTONIC = perf_counter()
 
 def _bind_cid(
     value: str | None = None,
-) -> tuple[str, Token[str | None], Any | None, dict[str, Any] | None]:
+) -> tuple[str, Token[str | None], Any, dict[str, Any]]:
     """Bind a CID and return tokens needed for scoped restoration.
 
     :param value: Explicit correlation ID, or ``None`` to create a new one.
@@ -44,11 +43,9 @@ def _bind_cid(
     """
 
     cid = value or new_cid()
+    structlog_contextvars = require_structlog_contextvars()
     cid_token = CID.set(cid)
-    structlog_contextvars = optional_structlog_contextvars()
-    structlog_tokens = None
-    if structlog_contextvars is not None:
-        structlog_tokens = dict(structlog_contextvars.bind_contextvars(cid=cid))
+    structlog_tokens = dict(structlog_contextvars.bind_contextvars(cid=cid))
     return cid, cid_token, structlog_contextvars, structlog_tokens
 
 
@@ -186,9 +183,8 @@ def clear_cid() -> None:
     """
 
     CID.set(None)
-    structlog_contextvars = optional_structlog_contextvars()
-    if structlog_contextvars is not None:
-        structlog_contextvars.unbind_contextvars("cid")
+    structlog_contextvars = require_structlog_contextvars()
+    structlog_contextvars.unbind_contextvars("cid")
 
 
 def current_task_name() -> str:

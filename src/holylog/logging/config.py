@@ -21,7 +21,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
-from holylog.logging._optional import require_structlog
+from holylog.logging.compat import validate_structlog
 from holylog.logging.context import (
     add_log_record_fields,
     add_runtime_context,
@@ -123,7 +123,7 @@ def setup_logging(
         instead of the root logger.
     """
 
-    structlog_module = require_structlog()
+    structlog_module = validate_structlog()
     install_app_logger_class()
     effective_dependency_levels = {
         **DEFAULT_DEPENDENCY_LEVELS,

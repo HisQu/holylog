@@ -73,7 +73,6 @@ Treat this as the parking lot for actionable problems discovered while working b
    1. [Table Of Contents](#table-of-contents)
 2. [2026-07-01](#2026-07-01)
    1. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
-   2. [P3 / E1 \[Code smell\] - *Structlog compatibility layer still reads as optional*](#p3--e1-code-smell---structlog-compatibility-layer-still-reads-as-optional)
 
 <br>
 
@@ -85,20 +84,3 @@ Treat this as the parking lot for actionable problems discovered while working b
 
 ## P3 / E3 [Code smell] - remove useless nesting
 - The `holylog.logging` level is currently useless. Find a better architecture.
-
-## P3 / E1 [Code smell] - *Structlog compatibility layer still reads as optional*
-
-- **Area:** `src/holylog/logging/_optional.py`,
-  `src/holylog/logging/context.py`, `src/holylog/logging/config.py`
-- **Observed while:** Holylog split code-smell pass.
-- **Evidence:** Holylog now declares `structlog>=25.5` as a normal runtime
-  dependency, but `_optional.py` still models structlog as optional through
-  helpers named `optional_structlog_contextvars()` and `require_structlog()`.
-  `set_cid()` silently skips structlog context binding when the root package is
-  missing, while `setup_logging()` raises.
-- **Why not fixed now:** The migrated code kept AppRC's optional-extra boundary
-  intact to reduce split risk.
-- **Suggested next step:** Rename the module to compatibility/validation
-  language, import required structlog pieces directly where reasonable, and
-  keep only version/feature checks that produce better user errors than the
-  default import failure.
