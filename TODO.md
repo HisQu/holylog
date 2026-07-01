@@ -72,12 +72,11 @@ Treat this as the parking lot for actionable problems discovered while working b
 1. [Todo list](#todo-list)
    1. [Table Of Contents](#table-of-contents)
 2. [2026-07-01](#2026-07-01)
-   1. [P2 / E2 \[Docs drift\] - The current docs seem empty](#p2--e2-docs-drift---the-current-docs-seem-empty)
-   2. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
-   3. [P2 / E1 \[Code smell\] - *Async telemetry patches the event loop method*](#p2--e1-code-smell---async-telemetry-patches-the-event-loop-method)
-   4. [P2 / E2 \[Code smell\] - *Redaction policy is shallow for structured fields*](#p2--e2-code-smell---redaction-policy-is-shallow-for-structured-fields)
-   5. [P2 / E3 \[Code smell\] - *Semantic event methods can drift from the registry*](#p2--e3-code-smell---semantic-event-methods-can-drift-from-the-registry)
-   6. [P3 / E1 \[Code smell\] - *Structlog compatibility layer still reads as optional*](#p3--e1-code-smell---structlog-compatibility-layer-still-reads-as-optional)
+   1. [P3 / E3 \[Code smell\] - remove useless nesting](#p3--e3-code-smell---remove-useless-nesting)
+   2. [P2 / E1 \[Code smell\] - *Async telemetry patches the event loop method*](#p2--e1-code-smell---async-telemetry-patches-the-event-loop-method)
+   3. [P2 / E2 \[Code smell\] - *Redaction policy is shallow for structured fields*](#p2--e2-code-smell---redaction-policy-is-shallow-for-structured-fields)
+   4. [P2 / E3 \[Code smell\] - *Semantic event methods can drift from the registry*](#p2--e3-code-smell---semantic-event-methods-can-drift-from-the-registry)
+   5. [P3 / E1 \[Code smell\] - *Structlog compatibility layer still reads as optional*](#p3--e1-code-smell---structlog-compatibility-layer-still-reads-as-optional)
 
 <br>
 
@@ -86,9 +85,6 @@ Treat this as the parking lot for actionable problems discovered while working b
 <br>
 
 # 2026-07-01
-
-## P2 / E2 [Docs drift] - The current docs seem empty
-- We need a deep analysis to properly structure and fill each doc markdown file.
 
 ## P3 / E3 [Code smell] - remove useless nesting
 - The `holylog.logging` level is currently useless. Find a better architecture.

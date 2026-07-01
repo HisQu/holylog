@@ -5,9 +5,12 @@ Stdlib-compatible semantic logging for Python applications.
 ## Table Of Contents
 
 1. [Installation](#installation)
-2. [Usage](#usage)
-3. [Development](#development)
-4. [Documentation](#documentation)
+2. [Quickstart](#quickstart)
+3. [Setup Model](#setup-model)
+4. [Correlation IDs](#correlation-ids)
+5. [Renderers](#renderers)
+6. [Documentation](#documentation)
+7. [Development](#development)
 
 ## Installation
 
@@ -21,7 +24,7 @@ For local development:
 python -m pip install -e "." --group dev
 ```
 
-## Usage
+## Quickstart
 
 Use the flat package API:
 
@@ -46,15 +49,23 @@ handlers, `pytest` `caplog`, dependency loggers, and existing logging-aware
 libraries while adding semantic helpers such as `success`, `action_begin`,
 `retry`, `fallback`, `telemetry`, and `traceback`.
 
+## Setup Model
+
 `setup_logging()` is safe to call more than once. By default it updates only
 Holylog's own handler and leaves host-owned handlers attached. Use
 `force=True` only when Holylog should take over the target logger and replace
 all of its handlers.
 
+Use `logger="myapp"` to configure a named application logger instead of the
+process root logger. Named logger setup disables propagation so embedded
+applications can avoid taking over host logging.
+
 Use `dependency_levels={...}` to adjust noisy dependency logger levels. Existing
 dependency handlers are preserved by default; pass
 `dependency_handler_policy="clear"` to clear dependency handlers and route those
 records through propagation.
+
+## Correlation IDs
 
 Use `cid_context()` to bind a correlation ID for nested work and restore the
 previous value automatically:
@@ -64,7 +75,13 @@ with hlog.cid_context("request-42"):
     LOG.info("request started")
 ```
 
-Available renderers for `setup_logging(renderer=...)`:
+`cid_context()` works with `with` and `async with`. Use `set_cid()`,
+`new_cid()`, and `clear_cid()` only when you intentionally want non-scoped CID
+state.
+
+## Renderers
+
+Pass `renderer=...` to `setup_logging()`:
 
 | Renderer | Output |
 |---|---|
@@ -72,6 +89,14 @@ Available renderers for `setup_logging(renderer=...)`:
 | `cli` | CLI-oriented human console output. |
 | `ipy` | Notebook-oriented human console output. |
 | `json` | Machine-readable JSON records. |
+
+## Documentation
+
+- [Documentation map](docs/README.md)
+- [How-To User Guides](docs/How-To-User-Guides.md)
+- [References](docs/References.md)
+- [Explanations](docs/Explanations.md)
+- [Development](docs/Development.md)
 
 ## Development
 
@@ -85,10 +110,3 @@ python -m pip install -e "." --group dev
 
 `uv`, `direnv`, and `just` may be used as local conveniences when available,
 but the repository must remain installable with normal `pip`.
-
-## Documentation
-
-- [How-To User Guides](docs/How-To-User-Guides.md)
-- [References](docs/References.md)
-- [Explanations](docs/Explanations.md)
-- [Development](docs/Development.md)

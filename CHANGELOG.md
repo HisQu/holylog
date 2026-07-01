@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `{my_project}` will be documented in this file.
+All notable changes to `holylog` will be documented in this file.
 
 > [!IMPORTANT]
 > ## Rules
@@ -57,6 +57,9 @@ No breaking changes yet.
 
 ### 💔 Changed
 
+- Expanded the README and docs into a complete first-pass guide covering setup
+  ownership, semantic helpers, correlation IDs, JSON output, redaction,
+  lifecycle logging, telemetry, subprocess forwarding, and maintainer workflow.
 - `setup_logging(force=False)` now preserves host-owned target handlers while
   updating Holylog-owned handlers in place. Use `force=True` for full target
   logger takeover.
